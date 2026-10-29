@@ -1,0 +1,151 @@
+# Unity .gitignore
+# Based on github/gitignore Unity template
+
+# ==============================
+# Unity generated folders
+# ==============================
+.utmp/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+*.log
+
+# Memory captures and recordings
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# ==============================
+# Terrain and generated data
+# ==============================
+
+# Temporary terrain generation outputs
+/[Aa]ssets/[Tt]errain[Tt]emp/
+/[Aa]ssets/[Tt]errain[Cc]ache/
+/[Aa]ssets/[Tt]errain[Gg]enerated[Tt]emp/
+
+# Temporary heightmaps and terrain exports
+*.raw.tmp
+*.heightmap.tmp
+
+# IMPORTANT:
+# Do NOT ignore actual Terrain assets, TerrainData,
+# heightmaps, splatmaps, terrain materials, or their .meta files.
+# These must be committed if the project depends on them.
+
+# ==============================
+# Photon / Multiplayer
+# ==============================
+
+# Temporary Photon logs and debug output
+photon*.log
+photon*.tmp
+[Pp]hoton[Ll]ogs/
+
+# Temporary network test captures
+/[Nn]etwork[Cc]aptures/
+/[Mm]ultiplayer[Tt]emp/
+
+# IMPORTANT:
+# Do NOT ignore Photon SDK files, Photon AppSettings,
+# PhotonView components, NetworkBehaviours, prefabs,
+# scenes, or multiplayer scripts required by the project.
+#
+# Check Photon AppId and credentials before committing.
+# Do not commit private server credentials or secrets.
+
+# ==============================
+# Blender
+# ==============================
+*.blend1
+*.blend1.meta
+
+# ==============================
+# Asset Store Tools
+# ==============================
+# Uncomment if desired
+# /[Aa]ssets/AssetStoreTools*
+
+# ==============================
+# JetBrains Rider
+# ==============================
+/[Aa]ssets/Plugins/Editor/JetBrains*
+*.DotSettings.user
+
+# ==============================
+# Visual Studio / IDE
+# ==============================
+.vs/
+.gradle/
+.consulo/
+ExportedObj/
+
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Generated Unity meta files for IDE artifacts
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# ==============================
+# Unity crash reports
+# ==============================
+sysinfo.txt
+mono_crash.*
+
+# ==============================
+# Builds and packages
+# ==============================
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+
+# ==============================
+# Crashlytics
+# ==============================
+crashlytics-build.properties
+
+# ==============================
+# Tests
+# ==============================
+InitTestScene*.unity*
+
+# ==============================
+# Addressables
+# ==============================
+/ServerData
+/[Aa]ssets/StreamingAssets/aa*
+/[Aa]ssets/AddressableAssetsData/link.xml*
+/[Aa]ssets/Addressables_Temp*
+/[Aa]ssets/AddressableAssetsData//.bin*
+
+# ==============================
+# Visual Scripting generated files
+# ==============================
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db.meta
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers.meta
+
+# ==============================
+# Play Mode test scenes
+# ==============================
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
