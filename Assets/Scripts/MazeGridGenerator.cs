@@ -99,4 +99,20 @@ public class MazeGridGenerator : MonoBehaviour
         if (x < 0 || x >= Width || y < 0 || y >= Height) return false;
         return WalkableGrid[x, y];
     }
+
+    public void SetWalkable(int x, int y, bool walkable)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+        WalkableGrid[x, y] = walkable;
+    }
+
+    public Vector2Int WorldToGridPositionUnclamped(Vector3 worldPosition)
+    {
+        Vector3 localPos = worldPosition - transform.position;
+
+        int x = Mathf.RoundToInt(localPos.x / cellSize);
+        int y = Mathf.RoundToInt(localPos.z / cellSize);
+
+        return new Vector2Int(x, y);
+    }
 }
