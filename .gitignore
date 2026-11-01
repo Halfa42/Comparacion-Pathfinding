@@ -149,3 +149,8 @@ InitTestScene*.unity*
 # Play Mode test scenes
 # ==============================
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# ==============================
+# Agents
+# ==============================
+AGENTS.md
