@@ -1,0 +1,395 @@
+using System.Collections.Generic;
+using UnityEngine;
+using System.Linq;
+
+public class CBSManager : MonoBehaviour
+{
+    // --- ESTRUCTURAS DE ALTO NIVEL (CBS) ---
+    public class CBSNode
+    {
+        public List<List<Vector2Int>> Paths = new List<List<Vector2Int>>();
+        public List<Constraint> Constraints = new List<Constraint>();
+        public int Cost = 0;          // Suma de costos (SIC)
+        public int ConflictCount = 0; // Para desempatar: menos conflictos primero
+    }
+
+    public struct Constraint
+    {
+        public int AgentID;
+        public Vector2Int Position; // Celda prohibida (vertex) o celda DESTINO (edge)
+        public Vector2Int From;     // Solo para edge: celda de origen
+        public int Time;            // Instante en el que el agente estaría en Position
+        public bool IsEdge;
+    }
+
+    public class Conflict
+    {
+        public int Agent1, Agent2;
+        public int Time;
+        public bool IsEdge;
+        // Movimiento de cada agente que causa el conflicto (From -> Pos, llegando en Time)
+        public Vector2Int From1, Pos1, From2, Pos2;
+    }
+
+    // --- PARÁMETROS Y MÉTRICAS ---
+    [Header("Límites de seguridad")]
+    [SerializeField] private int maxCBSNodes = 100000;
+    [SerializeField] private float timeLimitSeconds = 30f;
+    [SerializeField] private int maxTimeLimit = 200; // horizonte máximo del A* de bajo nivel
+
+    public int TotalNodesExpanded { get; private set; }
+    public bool Success { get; private set; }
+    public string FailureReason { get; private set; }
+    public long PeakMemoryBytes { get; private set; }
+
+    // Cache de mapas de distancia reales (BFS desde la meta). Se limpia en cada FindPaths.
+    private readonly Dictionary<Vector2Int, int[,]> distanceCache = new Dictionary<Vector2Int, int[,]>();
+
+    private static readonly Vector2Int[] Directions =
+    {
+        new Vector2Int(0, 1), new Vector2Int(0, -1),
+        new Vector2Int(-1, 0), new Vector2Int(1, 0),
+        new Vector2Int(0, 0) // esperar
+    };
+
+    // --- ALGORITMO CBS ---
+    public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, List<Vector2Int> goals)
+    {
+        TotalNodesExpanded = 0;
+        Success = false;
+        FailureReason = "";
+        PeakMemoryBytes = 0;
+        distanceCache.Clear();
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        // Orden: menor costo; empate -> menos conflictos
+        var openList = new PriorityQueue<CBSNode>((a, b) =>
+        {
+            int cmp = a.Cost.CompareTo(b.Cost);
+            return cmp != 0 ? cmp : a.ConflictCount.CompareTo(b.ConflictCount);
+        });
+
+        CBSNode root = new CBSNode();
+        for (int i = 0; i < starts.Count; i++)
+        {
+            var path = SpaceTimeAStar(grid, starts[i], goals[i], i, root.Constraints);
+            if (path == null)
+            {
+                FailureReason = $"Agente {i} no tiene ruta individual";
+                return null;
+            }
+            root.Paths.Add(path);
+            root.Cost += path.Count - 1;
+        }
+        FindFirstConflict(root.Paths, out root.ConflictCount);
+        openList.Enqueue(root);
+
+        while (openList.Count > 0)
+        {
+            if (TotalNodesExpanded >= maxCBSNodes)
+            {
+                FailureReason = "Límite de nodos CBS alcanzado";
+                return null;
+            }
+            if (clock.Elapsed.TotalSeconds > timeLimitSeconds)
+            {
+                FailureReason = "Límite de tiempo alcanzado";
+                return null;
+            }
+
+            TotalNodesExpanded++;
+            if (TotalNodesExpanded % 25 == 0)
+                PeakMemoryBytes = System.Math.Max(PeakMemoryBytes, System.GC.GetTotalMemory(false));
+
+            CBSNode bestNode = openList.Dequeue();
+
+            int dummy;
+            Conflict conflict = FindFirstConflict(bestNode.Paths, out dummy);
+            if (conflict == null)
+            {
+                Success = true;
+                PeakMemoryBytes = System.Math.Max(PeakMemoryBytes, System.GC.GetTotalMemory(false));
+                return bestNode.Paths; // Solución sin conflictos
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                CBSNode child = new CBSNode();
+                child.Constraints.AddRange(bestNode.Constraints);
+                child.Paths.AddRange(bestNode.Paths);
+
+                Constraint newConstraint = new Constraint
+                {
+                    AgentID = i == 0 ? conflict.Agent1 : conflict.Agent2,
+                    Position = i == 0 ? conflict.Pos1 : conflict.Pos2,
+                    From = i == 0 ? conflict.From1 : conflict.From2,
+                    Time = conflict.Time,
+                    IsEdge = conflict.IsEdge
+                };
+                child.Constraints.Add(newConstraint);
+
+                int a = newConstraint.AgentID;
+                var newPath = SpaceTimeAStar(grid, starts[a], goals[a], a, child.Constraints);
+                if (newPath == null) continue;
+
+                child.Paths[a] = newPath;
+                int cost = 0;
+                for (int k = 0; k < child.Paths.Count; k++) cost += child.Paths[k].Count - 1;
+                child.Cost = cost;
+                FindFirstConflict(child.Paths, out child.ConflictCount);
+                openList.Enqueue(child);
+            }
+        }
+
+        FailureReason = "Sin solución (open list vacía)";
+        return null;
+    }
+
+    // Devuelve el primer conflicto en el tiempo y cuenta el total.
+    // Modelo: el agente DESAPARECE al llegar a su meta (no bloquea la casilla).
+    private Conflict FindFirstConflict(List<List<Vector2Int>> paths, out int total)
+    {
+        total = 0;
+        Conflict first = null;
+        int maxTime = 0;
+        for (int p = 0; p < paths.Count; p++) maxTime = System.Math.Max(maxTime, paths[p].Count);
+
+        for (int t = 0; t < maxTime; t++)
+        {
+            for (int i = 0; i < paths.Count; i++)
+            {
+                if (t >= paths[i].Count) continue; // ya salió
+                for (int j = i + 1; j < paths.Count; j++)
+                {
+                    if (t >= paths[j].Count) continue;
+
+                    // Conflicto de vértice
+                    if (paths[i][t] == paths[j][t])
+                    {
+                        total++;
+                        if (first == null)
+                            first = new Conflict
+                            {
+                                Agent1 = i, Agent2 = j, Time = t, IsEdge = false,
+                                Pos1 = paths[i][t], Pos2 = paths[i][t]
+                            };
+                    }
+
+                    // Conflicto de arista (swap)
+                    if (t + 1 < paths[i].Count && t + 1 < paths[j].Count &&
+                        paths[i][t] == paths[j][t + 1] && paths[i][t + 1] == paths[j][t] &&
+                        paths[i][t] != paths[i][t + 1])
+                    {
+                        total++;
+                        if (first == null)
+                            first = new Conflict
+                            {
+                                Agent1 = i, Agent2 = j, Time = t + 1, IsEdge = true,
+                                From1 = paths[i][t], Pos1 = paths[i][t + 1],
+                                From2 = paths[j][t], Pos2 = paths[j][t + 1]
+                            };
+                    }
+                }
+            }
+        }
+        return first;
+    }
+
+    // Para validar la solución en el benchmark
+    public bool HasConflicts(List<List<Vector2Int>> paths)
+    {
+        int total;
+        FindFirstConflict(paths, out total);
+        return total > 0;
+    }
+
+    // --- A* EN ESPACIO-TIEMPO (Bajo Nivel) ---
+    private class AStarNode
+    {
+        public Vector2Int Position;
+        public int Time;
+        public int G;
+        public int H;
+        public int F => G + H;
+        public AStarNode Parent;
+    }
+
+    private List<Vector2Int> SpaceTimeAStar(int[,] grid, Vector2Int start, Vector2Int goal, int agentID, List<Constraint> constraints)
+    {
+        int W = grid.GetLength(1);
+        int H = grid.GetLength(0);
+        long N = (long)W * H;
+
+        int[,] dist = GetDistanceMap(grid, goal);
+        if (dist[start.y, start.x] < 0) return null; // meta inalcanzable
+
+        // Restricciones de este agente en HashSets (consulta O(1))
+        var vertexC = new HashSet<long>();
+        var edgeC = new HashSet<long>();
+        for (int k = 0; k < constraints.Count; k++)
+        {
+            var c = constraints[k];
+            if (c.AgentID != agentID) continue;
+            long to = (long)c.Position.y * W + c.Position.x;
+            if (c.IsEdge)
+            {
+                long from = (long)c.From.y * W + c.From.x;
+                edgeC.Add(((long)c.Time * N + from) * N + to);
+            }
+            else
+            {
+                vertexC.Add((long)c.Time * N + to);
+            }
+        }
+
+        var openList = new PriorityQueue<AStarNode>((a, b) =>
+        {
+            int cmp = a.F.CompareTo(b.F);
+            return cmp != 0 ? cmp : a.H.CompareTo(b.H);
+        });
+
+        // En espacio-tiempo G == Time, así que el primer acceso a (x,y,t) ya es óptimo
+        var visited = new HashSet<long>();
+
+        var startNode = new AStarNode { Position = start, Time = 0, G = 0, H = dist[start.y, start.x] };
+        openList.Enqueue(startNode);
+        visited.Add(((long)0 * N) + (long)start.y * W + start.x);
+
+        while (openList.Count > 0)
+        {
+            AStarNode current = openList.Dequeue();
+
+            if (current.Position == goal)
+                return ReconstructPath(current);
+
+            if (current.Time >= maxTimeLimit) continue;
+
+            int nextTime = current.Time + 1;
+            long fromCell = (long)current.Position.y * W + current.Position.x;
+
+            for (int d = 0; d < Directions.Length; d++)
+            {
+                Vector2Int nextPos = current.Position + Directions[d];
+
+                if (nextPos.x < 0 || nextPos.x >= W || nextPos.y < 0 || nextPos.y >= H) continue;
+                if (grid[nextPos.y, nextPos.x] == 1) continue;
+
+                long toCell = (long)nextPos.y * W + nextPos.x;
+                if (vertexC.Contains((long)nextTime * N + toCell)) continue;
+                if (edgeC.Count > 0 && edgeC.Contains(((long)nextTime * N + fromCell) * N + toCell)) continue;
+
+                long stateKey = (long)nextTime * N + toCell;
+                if (!visited.Add(stateKey)) continue;
+
+                openList.Enqueue(new AStarNode
+                {
+                    Position = nextPos,
+                    Time = nextTime,
+                    G = current.G + 1,
+                    H = dist[nextPos.y, nextPos.x],
+                    Parent = current
+                });
+            }
+        }
+
+        return null;
+    }
+
+    // BFS desde la meta: distancia real (con paredes) a cada celda. -1 = inalcanzable.
+    private int[,] GetDistanceMap(int[,] grid, Vector2Int goal)
+    {
+        int[,] map;
+        if (distanceCache.TryGetValue(goal, out map)) return map;
+
+        int W = grid.GetLength(1);
+        int H = grid.GetLength(0);
+        map = new int[H, W];
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++)
+                map[y, x] = -1;
+
+        var queue = new Queue<Vector2Int>();
+        map[goal.y, goal.x] = 0;
+        queue.Enqueue(goal);
+
+        while (queue.Count > 0)
+        {
+            var cur = queue.Dequeue();
+            for (int d = 0; d < 4; d++)
+            {
+                var n = cur + Directions[d];
+                if (n.x < 0 || n.x >= W || n.y < 0 || n.y >= H) continue;
+                if (grid[n.y, n.x] == 1 || map[n.y, n.x] != -1) continue;
+                map[n.y, n.x] = map[cur.y, cur.x] + 1;
+                queue.Enqueue(n);
+            }
+        }
+
+        distanceCache[goal] = map;
+        return map;
+    }
+
+    private List<Vector2Int> ReconstructPath(AStarNode node)
+    {
+        List<Vector2Int> path = new List<Vector2Int>();
+        while (node != null)
+        {
+            path.Add(node.Position);
+            node = node.Parent;
+        }
+        path.Reverse();
+        return path;
+    }
+}
+
+// --- COLA DE PRIORIDAD (MIN-HEAP) ---
+public class PriorityQueue<T>
+{
+    private List<T> data;
+    private System.Comparison<T> comparison;
+
+    public int Count => data.Count;
+
+    public PriorityQueue(System.Comparison<T> comparison)
+    {
+        this.data = new List<T>();
+        this.comparison = comparison;
+    }
+
+    public void Enqueue(T item)
+    {
+        data.Add(item);
+        int ci = data.Count - 1;
+        while (ci > 0)
+        {
+            int pi = (ci - 1) / 2;
+            if (comparison(data[ci], data[pi]) >= 0) break;
+            T tmp = data[ci]; data[ci] = data[pi]; data[pi] = tmp;
+            ci = pi;
+        }
+    }
+
+    public T Dequeue()
+    {
+        int li = data.Count - 1;
+        T frontItem = data[0];
+        data[0] = data[li];
+        data.RemoveAt(li);
+
+        --li;
+        int pi = 0;
+        while (true)
+        {
+            int ci = pi * 2 + 1;
+            if (ci > li) break;
+            int rc = ci + 1;
+            if (rc <= li && comparison(data[rc], data[ci]) < 0)
+                ci = rc;
+            if (comparison(data[pi], data[ci]) <= 0) break;
+            T tmp = data[pi]; data[pi] = data[ci]; data[ci] = tmp;
+            pi = ci;
+        }
+        return frontItem;
+    }
+}
