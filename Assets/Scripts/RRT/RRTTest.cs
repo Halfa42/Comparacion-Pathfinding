@@ -42,12 +42,19 @@ public class RRTTest : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (replanRequested) Recalculate();
+        if (replanRequested && (pathfinder == null || !pathfinder.IsBenchmarkRunning)) Recalculate();
     }
 
     [ContextMenu("Recalculate TA-RRT* Path")]
     public void Recalculate()
     {
+        if (pathfinder != null && pathfinder.IsBenchmarkRunning)
+        {
+            if (movement != null) movement.Stop();
+            path = null;
+            replanRequested = true;
+            return;
+        }
         replanRequested = false;
         path = null;
         if (movement != null) movement.Stop();
