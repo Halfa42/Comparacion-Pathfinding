@@ -31,6 +31,11 @@ public class RRTPathfinder : MonoBehaviour
     public int AdaptiveSampleCount { get; private set; }
     public float PathLength { get; private set; }
     public double PlanningMilliseconds { get; private set; }
+    public int ExpansionAttempts { get; private set; }
+    public long PeakMemoryBytes { get; private set; }
+    public bool CollectBenchmarkMetrics { get; set; }
+    public bool IsBenchmarkRunning { get; set; }
+    public int Seed { get => seed; set => seed = value; }
 
     private const float Epsilon = 0.00001f;
 
@@ -68,6 +73,9 @@ public class RRTPathfinder : MonoBehaviour
     private float cellSize, pathHeight;
     private int width, depth;
     private bool initialized;
+    private List<int>[] spatialBuckets;
+    private int spatialColumns, spatialRows;
+    private float spatialCellSize;
 
     public bool Initialize(Vector3 startWorld, Vector3 targetWorld)
     {
@@ -121,18 +129,22 @@ public class RRTPathfinder : MonoBehaviour
                 return true;
             }
 
+            CreateSpatialIndex();
+            IndexNode(0);
             random = new System.Random(seed);
             AnalyseTerrain();
             bool initialPathFound = CanReachGoal(start, goal);
 
             for (int iteration = 0; iteration < maxIterations; iteration++)
             {
+                if (iteration % 128 == 0) SampleBenchmarkMemory();
                 Vector2 sample = Sample(initialPathFound);
                 int nearest = Nearest(sample);
                 Vector2 delta = sample - nodes[nearest].point;
                 float distance = delta.magnitude;
                 if (distance < Epsilon) continue;
 
+                ExpansionAttempts++;
                 float step = AdaptiveStep(nodes[nearest].point);
                 Vector2 point = nodes[nearest].point + delta * (Mathf.Min(step, distance) / distance);
                 if (!SegmentFree(nodes[nearest].point, point)) continue;
@@ -170,6 +182,7 @@ public class RRTPathfinder : MonoBehaviour
         }
         finally
         {
+            SampleBenchmarkMemory();
             timer.Stop();
             PlanningMilliseconds = timer.Elapsed.TotalMilliseconds;
         }
@@ -177,14 +190,12 @@ public class RRTPathfinder : MonoBehaviour
 
     private int AddAndRewire(Vector2 point, int nearest)
     {
-        near.Clear();
+        FindNear(point);
         int parent = nearest;
         float bestCost = nodes[parent].cost + Vector2.Distance(nodes[parent].point, point);
-        for (int i = 0; i < nodes.Count; i++)
+        foreach (int i in near)
         {
             float distance = Vector2.Distance(nodes[i].point, point);
-            if (distance > neighbourRadius) continue;
-            near.Add(i);
             float candidate = nodes[i].cost + distance;
             if (candidate + Epsilon < bestCost && SegmentFree(nodes[i].point, point))
             {
@@ -195,6 +206,7 @@ public class RRTPathfinder : MonoBehaviour
 
         int added = nodes.Count;
         nodes.Add(new Node(point, parent, bestCost));
+        IndexNode(added);
         nodes[parent].children.Add(added);
         foreach (int i in near)
         {
@@ -310,12 +322,77 @@ public class RRTPathfinder : MonoBehaviour
     {
         int nearest = 0;
         float distance = float.PositiveInfinity;
-        for (int i = 0; i < nodes.Count; i++)
+        int centerX = BucketX(point.x), centerZ = BucketZ(point.y);
+        int maxRing = Mathf.Max(Mathf.Max(centerX, spatialColumns - 1 - centerX),
+                                Mathf.Max(centerZ, spatialRows - 1 - centerZ));
+        for (int ring = 0; ring <= maxRing; ring++)
         {
-            float candidate = (nodes[i].point - point).sqrMagnitude;
-            if (candidate < distance) { distance = candidate; nearest = i; }
+            int xMin = Mathf.Max(0, centerX - ring), xMax = Mathf.Min(spatialColumns - 1, centerX + ring);
+            int zMin = Mathf.Max(0, centerZ - ring), zMax = Mathf.Min(spatialRows - 1, centerZ + ring);
+            for (int x = xMin; x <= xMax; x++)
+            for (int z = zMin; z <= zMax; z++)
+            {
+                if (Mathf.Max(Mathf.Abs(x - centerX), Mathf.Abs(z - centerZ)) != ring) continue;
+                List<int> bucket = spatialBuckets[z * spatialColumns + x];
+                if (bucket == null) continue;
+                foreach (int i in bucket)
+                {
+                    float candidate = (nodes[i].point - point).sqrMagnitude;
+                    if (candidate < distance || (candidate == distance && i < nearest))
+                    { distance = candidate; nearest = i; }
+                }
+            }
+
+            // Exact nearest-neighbour query: stop only when no unvisited bucket
+            // can contain a closer point. A small margin covers float rounding.
+            double outside = double.PositiveInfinity;
+            if (xMin > 0) outside = Math.Min(outside, point.x - (xMin * (double)spatialCellSize - 0.5d));
+            if (xMax < spatialColumns - 1)
+                outside = Math.Min(outside, (xMax + 1d) * spatialCellSize - 0.5d - point.x);
+            if (zMin > 0) outside = Math.Min(outside, point.y - (zMin * (double)spatialCellSize - 0.5d));
+            if (zMax < spatialRows - 1)
+                outside = Math.Min(outside, (zMax + 1d) * spatialCellSize - 0.5d - point.y);
+            if (outside >= 0d && outside * outside > distance + Epsilon * Math.Max(1d, distance)) break;
         }
         return nearest;
+    }
+
+    private void CreateSpatialIndex()
+    {
+        // Index resolution is independent of the algorithm's steering step.
+        spatialCellSize = Mathf.Max(0.5f, neighbourRadius);
+        spatialColumns = (int)Math.Ceiling(width / (double)spatialCellSize);
+        spatialRows = (int)Math.Ceiling(depth / (double)spatialCellSize);
+        spatialBuckets = new List<int>[spatialColumns * spatialRows];
+    }
+
+    private int BucketX(double x) => Mathf.Clamp((int)Math.Floor((x + 0.5d) / spatialCellSize), 0, spatialColumns - 1);
+    private int BucketZ(double z) => Mathf.Clamp((int)Math.Floor((z + 0.5d) / spatialCellSize), 0, spatialRows - 1);
+
+    private void IndexNode(int index)
+    {
+        Vector2 point = nodes[index].point;
+        int key = BucketZ(point.y) * spatialColumns + BucketX(point.x);
+        if (spatialBuckets[key] == null) spatialBuckets[key] = new List<int>();
+        spatialBuckets[key].Add(index);
+    }
+
+    private void FindNear(Vector2 point)
+    {
+        near.Clear();
+        double radius = neighbourRadius + (double)Epsilon;
+        int xMin = BucketX(point.x - radius), xMax = BucketX(point.x + radius);
+        int zMin = BucketZ(point.y - radius), zMax = BucketZ(point.y + radius);
+        for (int x = xMin; x <= xMax; x++)
+        for (int z = zMin; z <= zMax; z++)
+        {
+            List<int> bucket = spatialBuckets[z * spatialColumns + x];
+            if (bucket == null) continue;
+            foreach (int i in bucket)
+                if (Vector2.Distance(nodes[i].point, point) <= neighbourRadius) near.Add(i);
+        }
+        // Preserve insertion-order tie breaking in ChooseParent and Rewiring.
+        near.Sort();
     }
 
     private bool IsAncestor(int candidate, int node)
@@ -352,6 +429,29 @@ public class RRTPathfinder : MonoBehaviour
     }
 
     private bool PointFree(Vector2 point) => SegmentFree(point, point);
+
+    public bool IsPathCollisionFree(IReadOnlyList<Vector3> path)
+    {
+        if (grid == null || path == null || path.Count == 0 || !ReadGrid()) return false;
+        for (int i = 0; i < path.Count; i++)
+        {
+            if (!Finite(path[i]) || !PointFree(ToGrid(path[i]))) return false;
+            if (i > 0 && !SegmentFree(ToGrid(path[i - 1]), ToGrid(path[i]))) return false;
+        }
+        return true;
+    }
+
+    public void ClearSearch()
+    {
+        initialized = false;
+        ResetSearch();
+    }
+
+    private void SampleBenchmarkMemory()
+    {
+        if (CollectBenchmarkMetrics)
+            PeakMemoryBytes = Math.Max(PeakMemoryBytes, GC.GetTotalMemory(false));
+    }
 
     // Segment-versus-cell tests with conservative square clearance. Closed
     // boxes reject corner touching and prevent diagonal corner cutting.
@@ -422,9 +522,12 @@ public class RRTPathfinder : MonoBehaviour
         freeCells.Clear();
         cumulativePdf.Clear();
         cornerTree = null;
+        spatialBuckets = null;
         PathLength = 0f;
         PlanningMilliseconds = 0d;
         AdaptiveSampleCount = 0;
+        ExpansionAttempts = 0;
+        PeakMemoryBytes = 0;
     }
 
     private bool ValidSettings()

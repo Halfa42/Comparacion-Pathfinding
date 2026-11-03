@@ -34,6 +34,8 @@ public class DTAPathfinder : MonoBehaviour
     public float PathLength { get; private set; }
     public double PathCost { get; private set; }
     public double PlanningMilliseconds { get; private set; }
+    public long PeakMemoryBytes { get; private set; }
+    public bool CollectBenchmarkMetrics { get; set; }
     public IReadOnlyList<Vector3> AbstractWorldPath => abstractWorldPath;
     public event Action CostsChanged;
 
@@ -74,6 +76,7 @@ public class DTAPathfinder : MonoBehaviour
             // Initial abstraction construction and pending local repairs are
             // included in this measurement. Other agents may reuse this map.
             if (!BuildCostProfile() || !terrainMap.EnsureBuilt()) return false;
+            SampleBenchmarkMemory();
             Vector2Int start = Grid.WorldToCell(currentWorldPosition);
             Vector2Int goal = Grid.WorldToCell(goalWorld);
             if (!Grid.IsWalkable(start) || !Grid.IsWalkable(goal)) return false;
@@ -111,6 +114,7 @@ public class DTAPathfinder : MonoBehaviour
         }
         finally
         {
+            SampleBenchmarkMemory();
             timer.Stop();
             PlanningMilliseconds = timer.Elapsed.TotalMilliseconds;
         }
@@ -284,7 +288,7 @@ public class DTAPathfinder : MonoBehaviour
 
     // The same A* implementation searches the abstract graph and refines each
     // segment. Stale entries are discarded; improved nodes can be reopened.
-    private static bool Search<T>(T start, T goal, Func<T, IEnumerable<T>> neighbours,
+    private bool Search<T>(T start, T goal, Func<T, IEnumerable<T>> neighbours,
                                   Func<T, T, double> cost, Func<T, T, double> heuristic,
                                   out List<T> path, out int expansions)
     {
@@ -303,6 +307,7 @@ public class DTAPathfinder : MonoBehaviour
             open.Remove(current);
             if (current.g != best[current.node]) continue;
             expansions++;
+            if (expansions % 128 == 0) SampleBenchmarkMemory();
             if (equality.Equals(current.node, goal))
             {
                 T step = goal;
@@ -313,6 +318,7 @@ public class DTAPathfinder : MonoBehaviour
                     path.Add(step);
                 }
                 path.Reverse();
+                SampleBenchmarkMemory();
                 return true;
             }
             foreach (T next in neighbours(current.node))
@@ -343,7 +349,20 @@ public class DTAPathfinder : MonoBehaviour
         PathLength = 0f;
         PathCost = 0d;
         PlanningMilliseconds = 0d;
+        PeakMemoryBytes = 0;
         abstractWorldPath.Clear();
+    }
+
+    public void ClearSearch()
+    {
+        initialized = false;
+        ResetMetrics();
+    }
+
+    private void SampleBenchmarkMemory()
+    {
+        if (CollectBenchmarkMetrics)
+            PeakMemoryBytes = Math.Max(PeakMemoryBytes, GC.GetTotalMemory(false));
     }
 
     private static bool PositiveFinite(float value) => value > 0f && !float.IsInfinity(value);
