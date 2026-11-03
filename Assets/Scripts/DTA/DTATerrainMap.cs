@@ -138,6 +138,18 @@ public class DTATerrainMap : MonoBehaviour
 
     public bool TryGetRegion(int id, out Region region) => regions.TryGetValue(id, out region);
 
+    /// <summary>Releases the cached graph but preserves all terrain assignments.</summary>
+    public void ClearAbstraction()
+    {
+        regions.Clear();
+        dirtySectors.Clear();
+        frontier.Clear();
+        component.Clear();
+        sectorRegions = null;
+        regionIds = null;
+        built = false;
+    }
+
     // Call after rebuilding the whole generator or changing Inspector patches
     // during Play. Runtime SetTerrainType changes are intentionally reset here.
     [ContextMenu("Reload DTA Terrain From Inspector")]
