@@ -115,4 +115,5 @@ public class MazeGridGenerator : MonoBehaviour
 
         return new Vector2Int(x, y);
     }
+
 }

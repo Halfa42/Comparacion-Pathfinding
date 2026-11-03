@@ -1,0 +1,11 @@
+Ejecucion,Exito,Nodos Expandidos (Alto Nivel),Tiempo (ms),Suma de Costos,Makespan,RAM Pico (MB),Solucion Valida,Motivo Fallo,Longitud Total (unidades),Conflictos,Rutas Sin Colision Con Muros,Replan Exitos,Tiempo Replan Incremental (ms),Nodos Replan Incremental,Tiempo Replan Desde Cero (ms),Nodos Replan Desde Cero
+1,True,392,0.65,227,27,0.00,False,,227.00,20,True,9,0.903,607,0.856,643
+2,True,392,0.63,227,27,0.00,False,,227.00,20,True,6,0.795,520,0.748,565
+3,True,392,0.66,227,27,0.00,False,,227.00,20,True,8,0.751,502,0.703,519
+4,True,392,0.61,227,27,0.00,False,,227.00,20,True,5,0.791,528,0.665,516
+5,True,392,0.80,227,27,0.00,False,,227.00,20,True,8,0.882,604,0.915,706
+6,True,392,0.62,227,27,0.00,False,,227.00,20,True,9,0.831,552,0.721,523
+7,True,392,0.63,227,27,0.00,False,,227.00,20,True,6,0.929,651,0.872,693
+8,True,392,0.64,227,27,0.00,False,,227.00,20,True,9,0.845,579,0.888,657
+9,True,392,0.63,227,27,0.00,False,,227.00,20,True,9,0.885,615,0.831,633
+10,True,392,0.64,227,27,0.00,False,,227.00,20,True,6,0.767,530,0.725,572

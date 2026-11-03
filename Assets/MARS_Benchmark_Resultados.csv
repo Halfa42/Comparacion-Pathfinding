@@ -1,0 +1,11 @@
+Ejecucion,Exito,Nodos Expandidos (Alto Nivel),Tiempo (ms),Suma de Costos,Makespan,RAM Pico (MB),Solucion Valida,Motivo Fallo,Semilla,Iteraciones RRT,Tiempo Planificacion (ms),Tiempo Optimizacion (ms),Longitud Original (unidades),Longitud Optimizada (unidades),Waypoints Originales,Waypoints Optimizados,Segmentos Invalidos,Conflictos
+1,True,2902,39.85,195,24,0.05,False,,13345,13105,37.700,2.130,224.51,196.55,338,110,0,57
+2,True,3290,60.36,212,26,0.07,False,,14345,14846,57.759,2.582,245.98,212.84,362,107,0,54
+3,True,3071,42.86,205,28,0.07,False,,15345,12907,40.847,1.997,230.67,204.64,342,102,0,75
+4,True,3275,42.49,207,30,0.06,False,,16345,14281,40.553,1.922,238.15,209.08,352,111,0,53
+5,True,3203,41.58,199,25,0.05,False,,17345,14591,39.550,2.021,227.35,199.85,343,106,0,57
+6,True,3158,43.57,238,47,0.07,False,,18345,13343,41.598,1.951,265.37,238.41,387,138,0,33
+7,True,3106,39.20,205,24,0.06,False,,19345,13070,37.189,1.999,236.03,205.86,347,110,0,40
+8,True,3596,51.01,235,52,0.08,False,,20345,15528,49.055,1.935,268.11,236.08,399,138,0,42
+9,True,3357,46.91,203,24,0.08,False,,21345,14258,44.923,1.973,229.02,202.75,341,116,0,33
+10,True,3313,46.03,243,57,0.07,False,,22345,14331,44.105,1.905,269.22,242.01,398,163,0,32

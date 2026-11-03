@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -19,6 +18,13 @@ public class DStarLitePathfinder : MonoBehaviour
 
     private float km;
     private bool initialized;
+
+    // --- Métricas para benchmark ---
+    /// <summary>Nodos sacados de la cola abierta desde el último Initialize (acumulativo entre replanificaciones).</summary>
+    public int NodesExpanded { get; private set; }
+    /// <summary>Tamaño máximo que alcanzó la cola abierta desde el último Initialize.</summary>
+    public int MaxOpenSize { get; private set; }
+    public MazeNavigationGrid Grid => grid;
 
     private readonly SortedSet<QueueEntry> open = new SortedSet<QueueEntry>(Comparer);
     private readonly Dictionary<Vector2Int, QueueEntry> entries = new();
@@ -116,6 +122,8 @@ public class DStarLitePathfinder : MonoBehaviour
         entries.Clear();
         km = 0f;
         insertionOrder = 0;
+        NodesExpanded = 0;
+        MaxOpenSize = 0;
 
         rhs[goal.x, goal.y] = 0f;
         Insert(goal, CalculateKey(goal));
@@ -207,7 +215,9 @@ public class DStarLitePathfinder : MonoBehaviour
                               g[start.x, start.y]))
                 break;
 
+            if (open.Count > MaxOpenSize) MaxOpenSize = open.Count;
             QueueEntry entry = PopMin();
+            NodesExpanded++;
             Vector2Int u = entry.node;
 
             Key newKey = CalculateKey(u);

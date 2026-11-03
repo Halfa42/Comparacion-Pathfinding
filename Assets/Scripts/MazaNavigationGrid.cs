@@ -84,4 +84,25 @@ public class MazeNavigationGrid : MonoBehaviour
         CellChanged?.Invoke(cell);
         return true;
     }
+
+    public Vector3 GetRandomWorldPosition(System.Random random)
+    {
+        // The grid positions are at integer multiples of CellSize.
+        // The half-cell margins define the complete grid area.
+        float x = (float)(random.NextDouble() * Width - 0.5f);
+        float z = (float)(random.NextDouble() * Depth - 0.5f);
+
+        Vector3 origin = maze.transform.position;
+
+        return origin + new Vector3(
+            x * CellSize,
+            0f,
+            z * CellSize
+        );
+    }
+
+    public bool IsValidWorldPosition(Vector3 position)
+    {
+        return IsWalkable(WorldToCell(position));
+    }
 }
