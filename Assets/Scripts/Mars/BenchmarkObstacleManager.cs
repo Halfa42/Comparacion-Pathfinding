@@ -21,6 +21,9 @@ public class BenchmarkObstacleManager : MonoBehaviour
         random = new System.Random(randomSeed);
     }
 
+    public MazeNavigationGrid Grid => grid;
+    public IReadOnlyList<Vector2Int> BlockedCells => blockedCells;
+
     public void ResetRandom()
     {
         random = new System.Random(randomSeed);
@@ -33,15 +36,19 @@ public class BenchmarkObstacleManager : MonoBehaviour
 
         Vector3 position = grid.CellToWorld(cell);
 
-        GameObject obstacle = Instantiate(
-            obstaclePrefab,
-            position + Vector3.up * 0.5f,
-            Quaternion.identity
-        );
+        // The prefab is only visual; without one the cell is still blocked.
+        if (obstaclePrefab != null)
+        {
+            GameObject obstacle = Instantiate(
+                obstaclePrefab,
+                position + Vector3.up * 0.5f,
+                Quaternion.identity
+            );
 
-        obstacle.name = $"DynamicObstacle_{cell.x}_{cell.y}";
+            obstacle.name = $"DynamicObstacle_{cell.x}_{cell.y}";
+            spawnedObstacles.Add(obstacle);
+        }
 
-        spawnedObstacles.Add(obstacle);
         blockedCells.Add(cell);
 
         grid.SetWalkable(cell, false);

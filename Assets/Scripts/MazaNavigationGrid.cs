@@ -14,6 +14,12 @@ public class MazeNavigationGrid : MonoBehaviour
 
     public event Action<Vector2Int> CellChanged;
 
+    /// <summary>
+    /// Increases every time a cell changes. Planners that cache collision checks (MARS)
+    /// compare against it to know when a cached result is stale.
+    /// </summary>
+    public int Revision { get; private set; }
+
     private void Awake()
     {
         if(maze == null)
@@ -81,6 +87,7 @@ public class MazeNavigationGrid : MonoBehaviour
         if(maze.IsWalkable(cell.x, cell.y) == walkable) return true;
 
         maze.SetWalkable(cell.x, cell.y, walkable);
+        Revision++;
         CellChanged?.Invoke(cell);
         return true;
     }

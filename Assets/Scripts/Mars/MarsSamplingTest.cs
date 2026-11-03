@@ -18,6 +18,7 @@ public class MarsSamplingTest : MonoBehaviour
 
     private MarsSampler sampler;
     private MarsCollisionChecker collisionChecker;
+    private System.Random directionRandom;
 
     private readonly List<Vector3> samples = new();
     private readonly List<(Vector3 from, Vector3 to, bool valid)> connections = new();
@@ -26,6 +27,7 @@ public class MarsSamplingTest : MonoBehaviour
     {
         sampler = new MarsSampler(grid, seed);
         collisionChecker = new MarsCollisionChecker(grid);
+        directionRandom = new System.Random(seed + 1);
 
         TestSampling();
     }
@@ -47,8 +49,9 @@ public class MarsSamplingTest : MonoBehaviour
             successfulSamples++;
             samples.Add(sample);
 
-            Vector3 direction = Random.insideUnitSphere;
-            direction.y = 0f;
+            // Seeded, so the test is reproducible (UnityEngine.Random was not seeded).
+            double angle = directionRandom.NextDouble() * 2.0 * System.Math.PI;
+            Vector3 direction = new Vector3((float)System.Math.Cos(angle), 0f, (float)System.Math.Sin(angle));
 
             if (direction.sqrMagnitude < 0.001f)
                 continue;
