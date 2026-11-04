@@ -13,6 +13,9 @@ GameObject:
   - component: {fileID: 7660093845139258397}
   - component: {fileID: 6306167198844539067}
   - component: {fileID: 9186158973021003660}
+  - component: {fileID: 772668675648901494}
+  - component: {fileID: 6045326824705610286}
+  - component: {fileID: 3509063881333165841}
   m_Layer: 0
   m_Name: AgenteD
   m_TagString: Untagged
@@ -120,7 +123,57 @@ MonoBehaviour:
   m_GameObject: {fileID: 6073495846908015729}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 43f8efa269f4cd148871b63214d840c4, type: 3}
+  m_Script: {fileID: 11500000, guid: 47c7bfba7f525dd418ace883e7c5901f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  grid: {fileID: 0}
+  grid: {fileID: 772668675648901494}
+  incrementalGoalUpdates: 1
+--- !u!114 &772668675648901494
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6073495846908015729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 963a70187c549b6478cd4d8d7bac43d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maze: {fileID: 0}
+  diagonalCornerTolerance: 0
+--- !u!114 &6045326824705610286
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6073495846908015729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a39a8a0d20b5a40b5e5f88a4b22445, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 3
+  rotationSpeed: 8
+  stoppingDistance: 0.05
+--- !u!114 &3509063881333165841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6073495846908015729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03b51d3368f98274fb652cf6888ceb68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pathfinder: {fileID: 9186158973021003660}
+  marsPathfinder: {fileID: 0}
+  grid: {fileID: 772668675648901494}
+  movement: {fileID: 6045326824705610286}
+  target: {fileID: 0}
+  updatesPerSecond: 10
+  catchDistance: 0.6
+  snapStartToFreeCell: 1

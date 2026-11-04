@@ -12,9 +12,10 @@ GameObject:
   - component: {fileID: 7018938476049613481}
   - component: {fileID: 3826417355701377582}
   - component: {fileID: 8325341472881233447}
-  - component: {fileID: 2325489801085504427}
   - component: {fileID: 947741863206809921}
   - component: {fileID: 656300641558992111}
+  - component: {fileID: 2290238673410677084}
+  - component: {fileID: 3663776293878306610}
   m_Layer: 0
   m_Name: AgentMars
   m_TagString: Untagged
@@ -113,28 +114,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &2325489801085504427
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2575506932585703352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 001a8e7dd96423642aa20c9e5db08810, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pathfinder: {fileID: 947741863206809921}
-  goal: {fileID: 0}
-  movement: {fileID: 656300641558992111}
-  checkRate: 30
-  obstacles: {fileID: 0}
-  autoDropObstacles: 0
-  dropEverySeconds: 3
-  minAhead: 1.5
-  maxAhead: 5
-  seed: 7
 --- !u!114 &947741863206809921
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -163,6 +142,7 @@ MonoBehaviour:
     rewireRadius: 1.5
     anytimeImprovement: 1
     maxStoredPaths: 10
+  goalUpdateDistance: 0.5
   drawPathSet: 1
   gizmoHeight: 0.3
 --- !u!114 &656300641558992111
@@ -180,3 +160,37 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 8
   stoppingDistance: 0.05
+--- !u!114 &2290238673410677084
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2575506932585703352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 963a70187c549b6478cd4d8d7bac43d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maze: {fileID: 0}
+  diagonalCornerTolerance: 0
+--- !u!114 &3663776293878306610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2575506932585703352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03b51d3368f98274fb652cf6888ceb68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pathfinder: {fileID: 0}
+  marsPathfinder: {fileID: 947741863206809921}
+  grid: {fileID: 2290238673410677084}
+  movement: {fileID: 656300641558992111}
+  target: {fileID: 0}
+  updatesPerSecond: 10
+  catchDistance: 0.6
+  snapStartToFreeCell: 1

@@ -11,6 +11,11 @@ public class MarsPathfinder : MonoBehaviour
     [SerializeField] private MazeNavigationGrid grid;
     [SerializeField] private MarsPlanner.Settings settings = new MarsPlanner.Settings();
 
+    [Header("Moving target")]
+    [Tooltip("The goal is only updated when the target has moved at least this far (world units) from the " +
+             "current goal, so a target that moves every frame does not trigger a replan every frame.")]
+    [SerializeField, Min(0f)] private float goalUpdateDistance = 0.5f;
+
     [Header("Gizmos")]
     [SerializeField] private bool drawPathSet = true;
     [SerializeField] private float gizmoHeight = 0.3f;
@@ -56,7 +61,34 @@ public class MarsPathfinder : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Moving-target version of TryGetPath (same signature as DStarLitePathfinder's): if the target moved
+    /// at least Goal Update Distance from the current goal, MARS moves the goal and replans reusing its
+    /// path set (MarsPlanner.SetGoal); otherwise it behaves like TryGetPath(position).
+    /// </summary>
+    public bool TryGetPath(Vector3 currentWorldPosition, Vector3 goalWorld, out List<Vector3> worldPath)
+    {
+        worldPath = new List<Vector3>();
+        if (planner == null || planner.CurrentPath == null) return false;
+
+        if (Flat(goalWorld, planner.GoalPosition) >= goalUpdateDistance)
+        {
+            MarsPlanner.ReplanResult result = planner.SetGoal(goalWorld, currentWorldPosition);
+            if (!result.Success) return false;
+            worldPath = result.Waypoints;
+            return true;
+        }
+
+        return TryGetPath(currentWorldPosition, out worldPath);
+    }
+
     public bool IsPathValidFrom(Vector3 position) => planner != null && planner.IsValidFrom(position);
+
+    private static float Flat(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x, dz = a.z - b.z;
+        return Mathf.Sqrt(dx * dx + dz * dz);
+    }
 
     private void OnDrawGizmos()
     {
