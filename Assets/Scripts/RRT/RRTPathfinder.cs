@@ -100,6 +100,15 @@ public class RRTPathfinder : MonoBehaviour
         return true;
     }
 
+    /// <summary>Runs the existing TA-RRT* search towards the latest target position.</summary>
+    public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
+                           out List<Vector3> worldPath)
+    {
+        worldPath = new List<Vector3>();
+        return Initialize(currentWorldPosition, targetWorldPosition) &&
+            TryGetPath(currentWorldPosition, out worldPath);
+    }
+
     /// <summary>
     /// Runs a synchronous, bounded search. False means no route was found
     /// within the iteration budget, not that a route cannot exist.
