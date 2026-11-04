@@ -54,13 +54,48 @@ public class DTAPathfinder : MonoBehaviour
             Debug.LogWarning("DTA: assign a Terrain Map and Grid, and use finite positive terrain costs.", this);
             return false;
         }
-        if (!Grid.IsWalkable(Grid.WorldToCell(startWorld)) || !Grid.IsWalkable(Grid.WorldToCell(targetWorld)))
+        Vector2Int startCell = Grid.WorldToCell(startWorld);
+        Vector2Int goalCell = Grid.WorldToCell(targetWorld);
+        if (!Grid.IsWalkable(startCell) || !Grid.IsWalkable(goalCell))
         {
-            Debug.LogWarning("DTA: start or goal is blocked or outside the grid.", this);
+            Debug.LogWarning($"DTA: start {startCell} walkable={Grid.IsWalkable(startCell)}; " +
+                $"goal {goalCell} walkable={Grid.IsWalkable(goalCell)}. " +
+                "Place both endpoints on walkable grid cells.", this);
             return false;
         }
         goalWorld = targetWorld;
         initialized = true;
+        return true;
+    }
+
+    /// <summary>Replans to the latest goal while reusing the terrain abstraction.</summary>
+    public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
+                           out List<Vector3> worldPath)
+    {
+        worldPath = new List<Vector3>();
+        if (!Initialize(currentWorldPosition, targetWorldPosition) ||
+            !TryGetPath(currentWorldPosition, out worldPath)) return false;
+
+        // If already advancing along the new first edge, continue towards its
+        // endpoint instead of going backwards to the starting cell's center.
+        // Keep that center when changing direction so refinement's corner
+        // constraints still apply to the route consumed by GridAgentMovement.
+        if (worldPath.Count > 1)
+        {
+            Vector3 edge = worldPath[1] - worldPath[0];
+            Vector3 offset = currentWorldPosition - worldPath[0];
+            edge.y = 0f;
+            offset.y = 0f;
+            if (edge.sqrMagnitude > 0f)
+            {
+                float progress = Vector3.Dot(offset, edge) / edge.sqrMagnitude;
+                Vector3 deviation = offset - edge * progress;
+                float tolerance = Grid.CellSize * 0.0001f;
+                if (progress > 0f && progress <= 1f &&
+                    deviation.sqrMagnitude <= tolerance * tolerance)
+                    worldPath.RemoveAt(0);
+            }
+        }
         return true;
     }
 

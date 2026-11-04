@@ -587,6 +587,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1956807195
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1956807197}
+  - component: {fileID: 1956807196}
+  m_Layer: 0
+  m_Name: PlayerSimulationSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1956807196
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1956807195}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b48d24428433154cab04e2c9d3222d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mazeGenerator: {fileID: 379980420}
+  playerPrefab: {fileID: 3301294054939785204, guid: 46eacb269d452cc4ca7e6f3df8c6707f, type: 3}
+--- !u!4 &1956807197
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1956807195}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 15.434275, y: -0.8679013, z: 8.310907}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1136127214325930616
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -679,9 +725,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pathfinder: {fileID: 9085486537151293463}
-  goal: {fileID: 956174142}
+  goal: {fileID: 1956807197}
   movement: {fileID: 2827245459871968681}
   drawAbstractPath: 1
+  replanInterval: 0.2
 --- !u!114 &9085486537151293463
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -714,3 +761,4 @@ SceneRoots:
   - {fileID: 956174142}
   - {fileID: 1136127214325930616}
   - {fileID: 1606648919}
+  - {fileID: 1956807197}
