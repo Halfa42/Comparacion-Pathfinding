@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,74 +7,114 @@ public class CBSVisualizer : MonoBehaviour
     [Header("Referencias")]
     public CBSManager cbsManager;
     public MazeGridGenerator mazeGenerator;
+    public Transform playerTransform; 
     public GameObject agentPrefab;
 
     [Header("Configuración")]
-    [Range(1, 11)] public int numberOfAgents = 10;
+    [Range(1, 11)] public int numberOfAgents = 1;
+    [Tooltip("Cada cuántos segundos recalculan la ruta los agentes hacia el jugador")]
+    public float recalculateInterval = 1.0f; 
+
+    private List<GridAgentMovement> activeAgents = new List<GridAgentMovement>();
+    private int[,] grid;
 
     void Start()
     {
-        // 1. Extraer la matriz del MazeGridGenerator para que CBS la entienda
+        if (mazeGenerator == null) mazeGenerator = FindObjectOfType<MazeGridGenerator>();
+        if (cbsManager == null) cbsManager = GetComponent<CBSManager>();
+
+        // 1. Extraer la matriz de la grilla
         int width = mazeGenerator.Width;
         int height = mazeGenerator.Height;
-        int[,] grid = new int[height, width];
-
+        grid = new int[height, width];
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                // 0 = Transitable, 1 = Pared
                 grid[y, x] = mazeGenerator.IsWalkable(x, y) ? 0 : 1; 
             }
         }
 
-        // 2. Definir los inicios y la meta (Igual que en tus benchmarks)
-        List<Vector2Int> starts = new List<Vector2Int>();
-        List<Vector2Int> goals = new List<Vector2Int>();
+        // 2. Instanciar los agentes físicos al inicio (aún sin ruta)
         for (int i = 0; i < numberOfAgents; i++)
         {
-            starts.Add(new Vector2Int(13 + i, 13));
-            goals.Add(new Vector2Int(21, 0)); // El cuello de botella
+            Vector2Int startPos = new Vector2Int(13 + i, 13);
+            Vector3 worldPos = mazeGenerator.GridToWorldPosition(startPos.x, startPos.y);
+            worldPos.y = 0.5f;
+
+            GameObject agentObj = Instantiate(agentPrefab, worldPos, Quaternion.identity);
+            agentObj.name = "Agente_CBS_" + i;
+            
+            if (agentObj.TryGetComponent(out GridAgentMovement movement))
+            {
+                activeAgents.Add(movement);
+            }
+            else
+            {
+                Debug.LogWarning($"El prefab {agentPrefab.name} no tiene GridAgentMovement.");
+            }
         }
 
-        // 3. Ejecutar CBS
-        var paths = cbsManager.FindPaths(grid, starts, goals);
+        // 3. Iniciar el bucle de persecución dinámica
+        StartCoroutine(ChasePlayerRoutine());
+    }
 
-        // 4. Procesar resultados e instanciar agentes visuales
+    IEnumerator ChasePlayerRoutine()
+    {
+        // Esperar 0.5s para asegurar que AStarSingleManager ya instanció al jugador
+        yield return new WaitForSeconds(0.5f);
+
+        while (true)
+        {
+            // Buscar al jugador dinámico por su nombre exacto si aún no lo tenemos
+            if (playerTransform == null)
+            {
+                GameObject playerObj = GameObject.Find("Player_AStar_Unico");
+                if (playerObj != null) playerTransform = playerObj.transform;
+            }
+
+            // Si el jugador existe, recalcular rutas hacia su posición actual
+            if (playerTransform != null)
+            {
+                RecalculatePaths();
+            }
+
+            // Esperar el intervalo indicado antes de volver a recalcular (para no saturar el CPU)
+            yield return new WaitForSeconds(recalculateInterval);
+        }
+    }
+
+    void RecalculatePaths()
+    {
+        List<Vector2Int> currentStarts = new List<Vector2Int>();
+        
+        // Registrar desde qué celda va a salir cada agente en este instante
+        foreach (var agent in activeAgents)
+        {
+            currentStarts.Add(mazeGenerator.WorldToGridPosition(agent.transform.position));
+        }
+
+        // Registrar en qué celda está pisando el jugador ahora mismo
+        Vector2Int playerGoal = mazeGenerator.WorldToGridPosition(playerTransform.position);
+
+        // Ejecutar el CBS centralizado
+        var paths = cbsManager.FindPaths(grid, currentStarts, playerGoal);
+
+        // Si encontró una solución sin choques, actualizar la ruta de todos los modelos 3D
         if (paths != null && cbsManager.Success)
         {
-            Debug.Log("¡Rutas encontradas! Instanciando agentes...");
-
             for (int i = 0; i < paths.Count; i++)
             {
                 List<Vector3> worldPath = new List<Vector3>();
-                
-                // Convertir coordenadas de grilla a posiciones reales en 3D
                 foreach (Vector2Int p in paths[i])
                 {
                     Vector3 worldPos = mazeGenerator.GridToWorldPosition(p.x, p.y);
-                    worldPos.y = 0.5f; // Elevar ligeramente para que la cápsula toque el suelo
+                    worldPos.y = 0.5f;
                     worldPath.Add(worldPos);
                 }
-
-                // Instanciar el prefab en el primer punto de la ruta
-                GameObject agent = Instantiate(agentPrefab, worldPath[0], Quaternion.identity);
-                agent.name = "Agente_CBS_" + i;
-
-                // Asignarle la ruta al componente GridAgentMovement
-                if (agent.TryGetComponent(out GridAgentMovement movement))
-                {
-                    movement.SetPath(worldPath);
-                }
-                else
-                {
-                    Debug.LogWarning("El prefab no tiene el script GridAgentMovement adjunto.");
-                }
+                // Enviar la nueva ruta fresca al componente de movimiento
+                activeAgents[i].SetPath(worldPath);
             }
-        }
-        else
-        {
-            Debug.LogError("CBS falló: " + cbsManager.FailureReason);
         }
     }
 }

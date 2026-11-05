@@ -278,9 +278,10 @@ public class MasterBenchmarkManager : MonoBehaviour
     // CBS: multi-agent, coordinated. One call plans every agent.
     private void RunCBS(List<Vector2Int> starts, RunResult r)
     {
-        var goals = Goals(starts.Count);
         var sw = Stopwatch.StartNew();
-        var paths = cbs.FindPaths(mazeMatrix, starts, goals);
+        
+        var paths = cbs.FindPaths(mazeMatrix, starts, goalCell);
+        
         sw.Stop();
 
         r.Ms = sw.Elapsed.TotalMilliseconds;
