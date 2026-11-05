@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Attach to the agent, alongside GridAgentMovement, in the DTA scene.
-public class DTATest : MonoBehaviour
+public class DTATest : MonoBehaviour, AlgorithmSequenceController.IAlgorithmStrategy
 {
     [SerializeField] private DTAPathfinder pathfinder;
     [Tooltip("Target to follow, or an AStarSingleManager whose spawned player should be followed.")]
@@ -29,6 +29,44 @@ public class DTATest : MonoBehaviour
     private Collider[] agentColliders;
     private Collider[] goalColliders;
 
+    public Transform Agent => movement != null ? movement.transform : transform;
+    public bool IsSolved => goalCaught;
+
+    public bool BeginRun(Transform target, MazeNavigationGrid grid)
+    {
+        EndRun();
+        if (movement == null) movement = GetComponent<GridAgentMovement>();
+        if (pathfinder == null) pathfinder = GetComponent<DTAPathfinder>();
+        if (pathfinder == null || grid == null || movement == null || target == null) return false;
+        if (pathfinder.Grid != grid)
+            foreach (DTATerrainMap map in FindObjectsByType<DTATerrainMap>(FindObjectsSortMode.None))
+                if (map.Grid == grid)
+                {
+                    pathfinder.SetTerrainMap(map);
+                    break;
+                }
+        if (pathfinder.Grid != grid) return false;
+        goal = target;
+        goalCaught = false;
+        collisionGoal = null;
+        agentColliders = null;
+        goalColliders = null;
+        hasGoalSample = false;
+        pathSearchFailed = false;
+        replanRequested = true;
+        started = true;
+        pathfinder.ClearSearch();
+        enabled = true;
+        return true;
+    }
+
+    public void EndRun()
+    {
+        enabled = false;
+        if (movement != null) movement.Stop();
+        path = null;
+    }
+
     private void OnEnable()
     {
         subscribedPathfinder = pathfinder;
@@ -43,6 +81,7 @@ public class DTATest : MonoBehaviour
 
     private void Start()
     {
+        if (started) return;
         started = true;
         Recalculate();
     }
@@ -94,7 +133,7 @@ public class DTATest : MonoBehaviour
 
     private bool TryCatchGoal(Transform currentGoal)
     {
-        if (agentColliders == null) agentColliders = GetComponentsInChildren<Collider>();
+        if (agentColliders == null) agentColliders = movement.GetComponentsInChildren<Collider>();
         if (collisionGoal != currentGoal)
         {
             collisionGoal = currentGoal;
@@ -208,7 +247,7 @@ public class DTATest : MonoBehaviour
 
         if (TryCatchGoal(currentGoal)) return;
 
-        Vector3 startPosition = transform.position;
+        Vector3 startPosition = Agent.position;
         Vector3 goalPosition = currentGoal.position;
         trackedGoal = currentGoal;
         plannedGoalCell = pathfinder.Grid.WorldToCell(goalPosition);

@@ -641,6 +641,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1015508524087401027, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
+      propertyPath: terrainMap
+      value: 
+      objectReference: {fileID: 379980423}
+    - target: {fileID: 1667490810153863953, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
+      propertyPath: goal
+      value: 
+      objectReference: {fileID: 1956807197}
     - target: {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
       propertyPath: m_Name
       value: AgenteDTA
@@ -688,68 +696,19 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 9085486537151293463}
-    - targetCorrespondingSourceObject: {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 9085486537151293462}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
---- !u!114 &2827245459871968681 stripped
+--- !u!114 &9085486537151293463 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5771764628513008790, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
+  m_CorrespondingSourceObject: {fileID: 1015508524087401027, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
   m_PrefabInstance: {fileID: 1136127214325930616}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7329361200075863745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 10a39a8a0d20b5a40b5e5f88a4b22445, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!1 &7329361200075863745 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
-  m_PrefabInstance: {fileID: 1136127214325930616}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &9085486537151293462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7329361200075863745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7df8f6d06e1acb948a4eff4f265c310f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pathfinder: {fileID: 9085486537151293463}
-  goal: {fileID: 1956807197}
-  movement: {fileID: 2827245459871968681}
-  drawAbstractPath: 1
-  replanInterval: 0.2
---- !u!114 &9085486537151293463
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7329361200075863745}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 00dda580a16ba9e40acac54bd8aa8cb2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrainMap: {fileID: 379980423}
-  defaultTerrainCost: 1
-  terrainCosts:
-  - terrainType: 1
-    cost: 1
-  - terrainType: 2
-    cost: 3
-  - terrainType: 3
-    cost: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

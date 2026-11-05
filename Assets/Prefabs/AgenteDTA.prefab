@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 6289864301183409561}
   - component: {fileID: 5636246710266528250}
   - component: {fileID: 5771764628513008790}
+  - component: {fileID: 1015508524087401027}
+  - component: {fileID: 1667490810153863953}
   m_Layer: 0
   m_Name: AgenteDTA
   m_TagString: Untagged
@@ -126,3 +128,41 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 8
   stoppingDistance: 0.05
+--- !u!114 &1015508524087401027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1917503243696377571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00dda580a16ba9e40acac54bd8aa8cb2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  terrainMap: {fileID: 0}
+  defaultTerrainCost: 1
+  terrainCosts:
+  - terrainType: 1
+    cost: 1
+  - terrainType: 2
+    cost: 3
+  - terrainType: 3
+    cost: 5
+--- !u!114 &1667490810153863953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1917503243696377571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7df8f6d06e1acb948a4eff4f265c310f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pathfinder: {fileID: 1015508524087401027}
+  goal: {fileID: 0}
+  movement: {fileID: 5771764628513008790}
+  drawAbstractPath: 1
+  replanInterval: 0.2

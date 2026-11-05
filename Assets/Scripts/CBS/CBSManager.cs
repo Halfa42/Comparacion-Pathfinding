@@ -2,8 +2,38 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-public class CBSManager : MonoBehaviour
+public class CBSManager : MonoBehaviour, IGridPathfinder
 {
+    private MazeNavigationGrid navigationGrid;
+    public long SearchNodes => TotalNodesExpanded;
+    public long SearchPeakMemory => PeakMemoryBytes;
+
+    public bool BindGrid(MazeNavigationGrid grid)
+    {
+        navigationGrid = grid;
+        return grid != null;
+    }
+
+    // The pursuit has one controlled agent. The existing multi-agent CBS API remains available.
+    public bool TryGetPath(Vector3 start, Vector3 goal, out List<Vector3> path)
+    {
+        path = null;
+        TotalNodesExpanded = 0;
+        PeakMemoryBytes = 0;
+        Success = false;
+        if (navigationGrid == null) return false;
+        Vector2Int startCell = navigationGrid.WorldToCell(start), goalCell = navigationGrid.WorldToCell(goal);
+        if (!navigationGrid.IsWalkable(startCell) || !navigationGrid.IsWalkable(goalCell)) return false;
+        var cells = new int[navigationGrid.Depth, navigationGrid.Width];
+        for (int z = 0; z < navigationGrid.Depth; z++)
+        for (int x = 0; x < navigationGrid.Width; x++)
+            cells[z, x] = navigationGrid.IsWalkable(new Vector2Int(x, z)) ? 0 : 1;
+        var routes = FindPaths(cells, new List<Vector2Int> { startCell }, new List<Vector2Int> { goalCell });
+        if (!Success || routes == null || routes.Count == 0) return false;
+        path = routes[0].Select(cell => navigationGrid.CellToWorld(cell)).ToList();
+        return true;
+    }
+
     // --- ESTRUCTURAS DE ALTO NIVEL (CBS) ---
     public class CBSNode
     {

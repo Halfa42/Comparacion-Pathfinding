@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RRTPathfinder : MonoBehaviour
+public class RRTPathfinder : MonoBehaviour, IPathfindingMetrics, IGridPathfinder
 {
     [SerializeField] private MazeNavigationGrid grid;
 
@@ -34,6 +34,17 @@ public class RRTPathfinder : MonoBehaviour
     public int ExpansionAttempts { get; private set; }
     public long PeakMemoryBytes { get; private set; }
     public bool CollectBenchmarkMetrics { get; set; }
+    public event Action<long, double, long> SearchCompleted;
+    public long SearchNodes => ExpansionAttempts;
+    public long SearchPeakMemory => PeakMemoryBytes;
+
+    public bool BindGrid(MazeNavigationGrid navigationGrid)
+    {
+        if (navigationGrid == null || IsBenchmarkRunning) return false;
+        SetGrid(navigationGrid);
+        ClearSearch();
+        return true;
+    }
     public bool IsBenchmarkRunning { get; set; }
     public int Seed { get => seed; set => seed = value; }
 
@@ -77,6 +88,13 @@ public class RRTPathfinder : MonoBehaviour
     private int spatialColumns, spatialRows;
     private float spatialCellSize;
 
+    public void SetGrid(MazeNavigationGrid navigationGrid)
+    {
+        if (grid == navigationGrid) return;
+        ClearSearch();
+        grid = navigationGrid;
+    }
+
     public bool Initialize(Vector3 startWorld, Vector3 targetWorld)
     {
         initialized = false;
@@ -104,16 +122,35 @@ public class RRTPathfinder : MonoBehaviour
     public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
                            out List<Vector3> worldPath)
     {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        try { return BuildPath(currentWorldPosition, targetWorldPosition, out worldPath); }
+        finally
+        {
+            timer.Stop();
+            PlanningMilliseconds = timer.Elapsed.TotalMilliseconds;
+            SearchCompleted?.Invoke(ExpansionAttempts, PlanningMilliseconds, PeakMemoryBytes);
+        }
+    }
+
+    public bool TryGetPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
+    {
+        try { return BuildPath(currentWorldPosition, out worldPath); }
+        finally { SearchCompleted?.Invoke(ExpansionAttempts, PlanningMilliseconds, PeakMemoryBytes); }
+    }
+
+    private bool BuildPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
+                           out List<Vector3> worldPath)
+    {
         worldPath = new List<Vector3>();
         return Initialize(currentWorldPosition, targetWorldPosition) &&
-            TryGetPath(currentWorldPosition, out worldPath);
+            BuildPath(currentWorldPosition, out worldPath);
     }
 
     /// <summary>
     /// Runs a synchronous, bounded search. False means no route was found
     /// within the iteration budget, not that a route cannot exist.
     /// </summary>
-    public bool TryGetPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
+    private bool BuildPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
     {
         worldPath = new List<Vector3>();
         ResetSearch();

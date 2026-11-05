@@ -1,0 +1,11 @@
+﻿Ejecución,Éxito,Nodos Expandidos (Alto Nivel),Tiempo (ms),Suma de Costos,Makespan,RAM Pico (MB)
+1,True,74,83.60,17,17,1.81
+2,True,72,11.95,18,18,1.43
+3,True,71,12.36,18,18,1.45
+4,True,71,12.46,18,18,1.43
+5,True,72,11.79,18,18,1.34
+6,True,71,13.06,18,18,1.32
+7,True,71,12.51,18,18,1.41
+8,True,72,11.22,18,18,1.39
+9,True,72,13.83,18,18,1.32
+10,False,12,0.84,-1,-1,0.16

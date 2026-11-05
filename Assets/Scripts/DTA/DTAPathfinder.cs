@@ -7,7 +7,7 @@ using UnityEngine;
 /// Sturtevant et al., AIIDE 2019, doi:10.1609/aiide.v15i1.5228, sections 3-4.2.
 /// The abstract route is approximate; no global optimality guarantee is claimed.
 /// </summary>
-public class DTAPathfinder : MonoBehaviour
+public class DTAPathfinder : MonoBehaviour, IPathfindingMetrics, IGridPathfinder
 {
     [Serializable]
     private struct TerrainCost
@@ -38,12 +38,32 @@ public class DTAPathfinder : MonoBehaviour
     public bool CollectBenchmarkMetrics { get; set; }
     public IReadOnlyList<Vector3> AbstractWorldPath => abstractWorldPath;
     public event Action CostsChanged;
+    public event Action<long, double, long> SearchCompleted;
+    public long SearchNodes => ExpandedAbstractNodes;
+    public long SearchPeakMemory => PeakMemoryBytes;
+
+    public bool BindGrid(MazeNavigationGrid navigationGrid)
+    {
+        if (navigationGrid == null) return false;
+        if (Grid != navigationGrid)
+            foreach (DTATerrainMap map in FindObjectsByType<DTATerrainMap>(FindObjectsSortMode.None))
+                if (map.Grid == navigationGrid) { SetTerrainMap(map); break; }
+        ClearSearch();
+        return Grid == navigationGrid;
+    }
 
     private readonly Dictionary<int, double> costByType = new Dictionary<int, double>();
     private readonly List<Vector3> abstractWorldPath = new List<Vector3>();
     private Vector3 goalWorld;
     private double minimumTerrainCost;
     private bool initialized;
+
+    public void SetTerrainMap(DTATerrainMap map)
+    {
+        if (terrainMap == map) return;
+        ClearSearch();
+        terrainMap = map;
+    }
 
     public bool Initialize(Vector3 startWorld, Vector3 targetWorld)
     {
@@ -72,9 +92,28 @@ public class DTAPathfinder : MonoBehaviour
     public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
                            out List<Vector3> worldPath)
     {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        try { return BuildPath(currentWorldPosition, targetWorldPosition, out worldPath); }
+        finally
+        {
+            timer.Stop();
+            PlanningMilliseconds = timer.Elapsed.TotalMilliseconds;
+            SearchCompleted?.Invoke(ExpandedAbstractNodes, PlanningMilliseconds, PeakMemoryBytes);
+        }
+    }
+
+    public bool TryGetPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
+    {
+        try { return BuildPath(currentWorldPosition, out worldPath); }
+        finally { SearchCompleted?.Invoke(ExpandedAbstractNodes, PlanningMilliseconds, PeakMemoryBytes); }
+    }
+
+    private bool BuildPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition,
+                           out List<Vector3> worldPath)
+    {
         worldPath = new List<Vector3>();
         if (!Initialize(currentWorldPosition, targetWorldPosition) ||
-            !TryGetPath(currentWorldPosition, out worldPath)) return false;
+            !BuildPath(currentWorldPosition, out worldPath)) return false;
 
         // If already advancing along the new first edge, continue towards its
         // endpoint instead of going backwards to the starting cell's center.
@@ -99,7 +138,7 @@ public class DTAPathfinder : MonoBehaviour
         return true;
     }
 
-    public bool TryGetPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
+    private bool BuildPath(Vector3 currentWorldPosition, out List<Vector3> worldPath)
     {
         worldPath = new List<Vector3>();
         ResetMetrics();

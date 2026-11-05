@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DStarLitePathfinder : MonoBehaviour
+public class DStarLitePathfinder : MonoBehaviour, IGridPathfinder
 {
     private const float Epsilon = 0.0001f;
     private const float Infinity = float.PositiveInfinity;
@@ -25,6 +25,33 @@ public class DStarLitePathfinder : MonoBehaviour
     /// <summary>Tamaño máximo que alcanzó la cola abierta desde el último Initialize.</summary>
     public int MaxOpenSize { get; private set; }
     public MazeNavigationGrid Grid => grid;
+    public long SearchNodes { get; private set; }
+    public long SearchPeakMemory => 0;
+
+    public bool BindGrid(MazeNavigationGrid navigationGrid)
+    {
+        if (grid != null) grid.CellChanged -= OnCellChanged;
+        grid = navigationGrid;
+        initialized = false;
+        if (grid != null && isActiveAndEnabled) grid.CellChanged += OnCellChanged;
+        return grid != null;
+    }
+
+    public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition, out List<Vector3> worldPath)
+    {
+        worldPath = null;
+        SearchNodes = 0;
+        if (grid == null) return false;
+        int before = NodesExpanded;
+        if (!initialized || grid.WorldToCell(targetWorldPosition) != goal)
+        {
+            initialized = false;
+            if (!Initialize(currentWorldPosition, targetWorldPosition)) return false;
+            before = 0;
+        }
+        try { return TryGetPath(currentWorldPosition, out worldPath); }
+        finally { SearchNodes = Math.Max(0, NodesExpanded - before); }
+    }
 
     private readonly SortedSet<QueueEntry> open = new SortedSet<QueueEntry>(Comparer);
     private readonly Dictionary<Vector2Int, QueueEntry> entries = new();

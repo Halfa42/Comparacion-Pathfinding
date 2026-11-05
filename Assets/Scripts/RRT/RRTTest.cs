@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RRTTest : MonoBehaviour
+public class RRTTest : MonoBehaviour, AlgorithmSequenceController.IAlgorithmStrategy
 {
     [SerializeField] private RRTPathfinder pathfinder;
     [Tooltip("Target to follow, or an AStarSingleManager whose spawned player should be followed.")]
@@ -28,6 +28,38 @@ public class RRTTest : MonoBehaviour
     private Collider[] agentColliders;
     private Collider[] goalColliders;
 
+    public Transform Agent => movement != null ? movement.transform : transform;
+    public bool IsSolved => goalCaught;
+
+    public bool BeginRun(Transform target, MazeNavigationGrid grid)
+    {
+        EndRun();
+        if (movement == null) movement = GetComponent<GridAgentMovement>();
+        if (pathfinder == null) pathfinder = GetComponent<RRTPathfinder>();
+        if (pathfinder == null || grid == null || pathfinder.IsBenchmarkRunning || movement == null || target == null)
+            return false;
+        pathfinder.SetGrid(grid);
+        goal = target;
+        goalCaught = false;
+        collisionGoal = null;
+        agentColliders = null;
+        goalColliders = null;
+        hasGoalSample = false;
+        pathSearchFailed = false;
+        replanRequested = true;
+        started = true;
+        pathfinder.ClearSearch();
+        enabled = true;
+        return true;
+    }
+
+    public void EndRun()
+    {
+        enabled = false;
+        if (movement != null) movement.Stop();
+        path = null;
+    }
+
     private void OnEnable()
     {
         subscribedGrid = pathfinder != null ? pathfinder.Grid : null;
@@ -37,6 +69,7 @@ public class RRTTest : MonoBehaviour
 
     private void Start()
     {
+        if (started) return;
         started = true;
         Recalculate();
     }
@@ -82,7 +115,7 @@ public class RRTTest : MonoBehaviour
         float threshold = Mathf.Max(0.01f, goalMovementThreshold);
         bool goalChanged = !hasGoalSample || trackedGoal != currentGoal ||
             displacement.sqrMagnitude >= threshold * threshold;
-        Vector3 remaining = currentGoal.position - transform.position;
+        Vector3 remaining = currentGoal.position - Agent.position;
         remaining.y = 0f;
         bool routeExhausted = !movement.HasPath && remaining.sqrMagnitude > 0.0001f;
 
@@ -141,7 +174,7 @@ public class RRTTest : MonoBehaviour
 
     private bool TryCatchGoal(Transform currentGoal)
     {
-        if (agentColliders == null) agentColliders = GetComponentsInChildren<Collider>();
+        if (agentColliders == null) agentColliders = movement.GetComponentsInChildren<Collider>();
         if (collisionGoal != currentGoal)
         {
             collisionGoal = currentGoal;
@@ -214,7 +247,7 @@ public class RRTTest : MonoBehaviour
         hasGoalSample = true;
         nextReplanTime = Time.time + Mathf.Max(0.02f, replanInterval);
 
-        if (pathfinder.TryGetPath(transform.position, plannedGoalPosition, out path))
+        if (pathfinder.TryGetPath(Agent.position, plannedGoalPosition, out path))
         {
             pathSearchFailed = false;
             movement.SetPath(path);

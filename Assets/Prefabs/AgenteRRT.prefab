@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 3147737467305960042}
   - component: {fileID: 6425023798163932595}
   - component: {fileID: 1783918589839028460}
+  - component: {fileID: 6091548211149554857}
+  - component: {fileID: 1171566166002093723}
   m_Layer: 0
   m_Name: AgenteRRT
   m_TagString: Untagged
@@ -124,7 +126,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   grid: {fileID: 0}
-  maxIterations: 12000
+  maxIterations: 4000
   seed: 12345
   neighbourRadius: 1.5
   goalRadius: 0.7
@@ -137,3 +139,35 @@ MonoBehaviour:
   densityRadius: 2
   densityMidpoint: 4
   densitySlope: 0.5
+--- !u!114 &6091548211149554857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4795062473110346599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc5df7b058e6b3e41bc6e0a5e83ba201, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pathfinder: {fileID: 1783918589839028460}
+  goal: {fileID: 0}
+  movement: {fileID: 1171566166002093723}
+  replanInterval: 0.5
+  goalMovementThreshold: 0.25
+--- !u!114 &1171566166002093723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4795062473110346599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a39a8a0d20b5a40b5e5f88a4b22445, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 3
+  rotationSpeed: 8
+  stoppingDistance: 0.05

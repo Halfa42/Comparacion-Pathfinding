@@ -5,6 +5,7 @@ public class AStarSingleManager : MonoBehaviour
     [Header("Referencias")]
     public MazeGridGenerator mazeGenerator;
     public GameObject playerPrefab; // Tu prefab de la cápsula azul
+    public Transform SpawnedPlayer { get; private set; }
 
     void Start()
     {
@@ -35,6 +36,7 @@ public class AStarSingleManager : MonoBehaviour
 
         // Instanciar el único jugador
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+        SpawnedPlayer = player.transform;
         player.name = "Player_AStar_Unico";
         
         // Inyectarle la referencia del laberinto al controlador

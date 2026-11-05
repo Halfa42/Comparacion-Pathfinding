@@ -1,0 +1,3 @@
+﻿Algoritmo,Ejecución,Éxito,Nodos Expandidos (Alto Nivel),Tiempo (ms),Suma de Costos,Makespan,RAM Pico (MB)
+"AgenteDTA",1,True,5,52.37,3,3,0.46
+"AgenteRRT",2,True,20000,3346.94,2,2,0.59

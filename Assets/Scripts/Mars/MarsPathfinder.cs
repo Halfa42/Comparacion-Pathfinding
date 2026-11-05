@@ -6,7 +6,7 @@ using UnityEngine;
 ///   Initialize(start, goal)  -> offline phase (builds the path set)
 ///   TryGetPath(position)     -> remaining current path if it is still valid, otherwise MARS replanning.
 /// </summary>
-public class MarsPathfinder : MonoBehaviour
+public class MarsPathfinder : MonoBehaviour, IGridPathfinder
 {
     [SerializeField] private MazeNavigationGrid grid;
     [SerializeField] private MarsPlanner.Settings settings = new MarsPlanner.Settings();
@@ -21,6 +21,37 @@ public class MarsPathfinder : MonoBehaviour
     public MarsPlanner Planner => planner;
     public MarsPlanner.Settings Settings => settings;
     public MarsPlanner.ReplanResult LastReplan => planner != null ? planner.LastReplan : null;
+    public long SearchNodes { get; private set; }
+    public long SearchPeakMemory => 0;
+    private Vector2Int movingGoalCell;
+
+    public bool BindGrid(MazeNavigationGrid navigationGrid)
+    {
+        grid = navigationGrid;
+        planner = null;
+        return grid != null;
+    }
+
+    public bool TryGetPath(Vector3 currentWorldPosition, Vector3 targetWorldPosition, out List<Vector3> worldPath)
+    {
+        worldPath = null;
+        SearchNodes = 0;
+        if (grid == null) return false;
+        Vector2Int targetCell = grid.WorldToCell(targetWorldPosition);
+        if (planner == null || planner.CurrentPath == null || movingGoalCell != targetCell)
+        {
+            movingGoalCell = targetCell;
+            bool initialized = Initialize(currentWorldPosition, targetWorldPosition);
+            SearchNodes = planner != null ? planner.OfflineTreeNodes : 0;
+            if (!initialized) return false;
+        }
+        MarsPlanner.ReplanResult previous = LastReplan;
+        bool found = TryGetPath(currentWorldPosition, out worldPath);
+        // Existing MARS counters: offline tree nodes plus online connection/subtree attempts.
+        if (LastReplan != null && LastReplan != previous)
+            SearchNodes += LastReplan.ConnectionAttempts + LastReplan.SubtreeIterations;
+        return found;
+    }
 
     public bool Initialize(Vector3 startWorld, Vector3 goalWorld)
     {

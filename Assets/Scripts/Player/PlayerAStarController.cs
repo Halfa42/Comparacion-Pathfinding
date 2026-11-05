@@ -10,9 +10,31 @@ public class PlayerAStarController : MonoBehaviour
     private GridAgentMovement movement;
     private Vector2Int currentGridPos;
     private Vector2Int currentGoal;
+    private System.Random scenarioRandom;
+    private bool navigationStarted;
+
+    public bool RestartNavigation(int randomSeed)
+    {
+        CancelInvoke();
+        enabled = false;
+        movement = GetComponent<GridAgentMovement>();
+        if (movement != null) movement.Stop();
+        if (maze == null) maze = FindObjectOfType<MazeGridGenerator>();
+        if (movement == null || maze == null) return false;
+        currentGridPos = maze.WorldToGridPositionUnclamped(transform.position);
+        if (!maze.IsWalkable(currentGridPos.x, currentGridPos.y)) return false;
+        currentGoal = currentGridPos;
+        scenarioRandom = new System.Random(randomSeed);
+        navigationStarted = true;
+        enabled = true;
+        SetNewRandomGoal();
+        return true;
+    }
 
     private void Start()
     {
+        if (navigationStarted) return;
+        navigationStarted = true;
         movement = GetComponent<GridAgentMovement>();
         
         // Autodetectar el laberinto si no se asignó en el inspector
@@ -79,8 +101,8 @@ public class PlayerAStarController : MonoBehaviour
         int maxAttempts = 100;
         for (int i = 0; i < maxAttempts; i++)
         {
-            int rx = Random.Range(0, maze.Width);
-            int ry = Random.Range(0, maze.Height);
+            int rx = scenarioRandom != null ? scenarioRandom.Next(maze.Width) : Random.Range(0, maze.Width);
+            int ry = scenarioRandom != null ? scenarioRandom.Next(maze.Height) : Random.Range(0, maze.Height);
             
             // Validar que sea transitable y no sea la casilla donde ya estamos
             if (maze.IsWalkable(rx, ry) && (rx != currentGridPos.x || ry != currentGridPos.y))

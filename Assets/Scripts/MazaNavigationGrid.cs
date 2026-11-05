@@ -112,4 +112,47 @@ public class MazeNavigationGrid : MonoBehaviour
     {
         return IsWalkable(WorldToCell(position));
     }
+
+    // Exact XZ segment test against blocked cells.
+    // Sampling can miss a short crossing near a corner or between two samples.
+    public bool IsSegmentWalkable(Vector3 from, Vector3 to)
+    {
+        if (!IsInside(Vector2Int.zero) || !(CellSize > 0f) || float.IsInfinity(CellSize) || !Finite(from) || !Finite(to) ||
+            !IsWalkable(WorldToCell(from)) || !IsWalkable(WorldToCell(to))) return false;
+        Vector3 origin = CellToWorld(Vector2Int.zero);
+        Vector2 a = new Vector2((from.x - origin.x) / CellSize, (from.z - origin.z) / CellSize);
+        Vector2 b = new Vector2((to.x - origin.x) / CellSize, (to.z - origin.z) / CellSize);
+        if (Mathf.Min(a.x, b.x) < -0.5f || Mathf.Min(a.y, b.y) < -0.5f ||
+            Mathf.Max(a.x, b.x) > Width - 0.5f || Mathf.Max(a.y, b.y) > Depth - 0.5f)
+            return false;
+        int xMin = Mathf.Max(0, Mathf.CeilToInt(Mathf.Min(a.x, b.x) - 0.5f));
+        int xMax = Mathf.Min(Width - 1, Mathf.FloorToInt(Mathf.Max(a.x, b.x) + 0.5f));
+        int zMin = Mathf.Max(0, Mathf.CeilToInt(Mathf.Min(a.y, b.y) - 0.5f));
+        int zMax = Mathf.Min(Depth - 1, Mathf.FloorToInt(Mathf.Max(a.y, b.y) + 0.5f));
+        for (int x = xMin; x <= xMax; x++)
+        for (int z = zMin; z <= zMax; z++)
+        {
+            if (IsWalkable(new Vector2Int(x, z))) continue;
+            float entry = 0f, exit = 1f, half = 0.5f;
+            if (ClipSegmentAxis(a.x, b.x - a.x, x - half, x + half, ref entry, ref exit) &&
+                ClipSegmentAxis(a.y, b.y - a.y, z - half, z + half, ref entry, ref exit)) return false;
+        }
+        return true;
+    }
+
+    private static bool ClipSegmentAxis(float origin, float direction, float min, float max,
+        ref float entry, ref float exit)
+    {
+        if (Mathf.Abs(direction) < 0.0000001f) return origin >= min && origin <= max;
+        float a = (min - origin) / direction, b = (max - origin) / direction;
+        entry = Mathf.Max(entry, Mathf.Min(a, b));
+        exit = Mathf.Min(exit, Mathf.Max(a, b));
+        return entry <= exit;
+    }
+
+    private static bool Finite(Vector3 value) =>
+        !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
+        !float.IsNaN(value.y) && !float.IsInfinity(value.y) &&
+        !float.IsNaN(value.z) && !float.IsInfinity(value.z);
+
 }
