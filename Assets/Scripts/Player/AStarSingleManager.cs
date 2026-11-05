@@ -6,9 +6,9 @@ public class AStarSingleManager : MonoBehaviour
     public MazeGridGenerator mazeGenerator;
     public GameObject playerPrefab; // Tu prefab de la cápsula azul
 
+    // CAMBIO AQUÍ: Regresamos a Start() para esperar a que el laberinto se construya primero
     void Start()
     {
-        // Autodetectar el laberinto si no se asignó en el inspector
         if (mazeGenerator == null)
             mazeGenerator = FindObjectOfType<MazeGridGenerator>();
 
@@ -31,11 +31,14 @@ public class AStarSingleManager : MonoBehaviour
 
         // Convertir coordenada de grilla a posición 3D real
         Vector3 spawnPos = mazeGenerator.GridToWorldPosition(rx, ry);
-        spawnPos.y = 0.5f; // Ajustar altura para que toque el suelo
+        spawnPos.y = 0.5f; 
 
         // Instanciar el único jugador
         GameObject player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
         player.name = "Player_AStar_Unico";
+        
+        // Mantenemos la etiqueta para que el CBSVisualizer lo encuentre
+        player.tag = "Player"; 
         
         // Inyectarle la referencia del laberinto al controlador
         if (player.TryGetComponent(out PlayerAStarController controller))

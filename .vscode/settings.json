@@ -67,6 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Comparacion-Pathfinding.slnx",
+    "dotnet.defaultSolution": "Comparacion.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }

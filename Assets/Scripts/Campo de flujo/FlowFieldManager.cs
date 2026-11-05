@@ -52,6 +52,19 @@ public class FlowFieldManager : MonoBehaviour
         new Vector2Int(-1, 0), new Vector2Int(1, 0)
     };
 
+    // --- SOBRECARGA PARA PERSEGUIR A UN OBJETIVO ÚNICO (PLAYER) ---
+    public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, Vector2Int playerGoal)
+    {
+        // Creamos una lista donde todos los agentes tienen exactamente la misma meta
+        List<Vector2Int> goals = new List<Vector2Int>();
+        for (int i = 0; i < starts.Count; i++)
+        {
+            goals.Add(playerGoal);
+        }
+        // Llamamos al método original, el cual ya está optimizado para no recalcular metas repetidas
+        return FindPaths(grid, starts, goals);
+    }
+
     public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, List<Vector2Int> goals)
     {
         TotalNodesExpanded = 0;

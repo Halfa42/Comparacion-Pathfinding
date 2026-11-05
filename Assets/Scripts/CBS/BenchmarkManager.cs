@@ -8,11 +8,11 @@ public class BenchmarkManager : MonoBehaviour
 {
     public CBSManager cbsManager;
     [SerializeField] private int numberOfRuns = 10;
-    [SerializeField] [Range(2, 11)] private int numberOfAgents = 10; // la fila 13 tiene 11 celdas libres a la derecha
+    [SerializeField] [Range(2, 11)] private int numberOfAgents = 10;
 
     private readonly int[,] maze = new int[,]
     {
-        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1}, // Salida en [x=21, y=0]
+        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1},
         {1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1},
         {1,0,1,1,1,0,1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1},
         {1,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,1,0,1},
@@ -25,7 +25,7 @@ public class BenchmarkManager : MonoBehaviour
         {1,0,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,0,1,0,1},
         {1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1},
         {1,1,1,0,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,0,1,1,1},
-        {1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1}, // Celdas libres x=13..23
+        {1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
     };
 
@@ -36,20 +36,19 @@ public class BenchmarkManager : MonoBehaviour
 
     void RunBenchmark()
     {
-        // Vector2Int(columna X, fila Y). Un agente por celda, desde x=13 en la fila 13.
         var starts = new List<Vector2Int>();
-        var goals = new List<Vector2Int>();
+        Vector2Int goal = new Vector2Int(21, 0);
+
         for (int i = 0; i < numberOfAgents; i++)
         {
             starts.Add(new Vector2Int(13 + i, 13));
-            goals.Add(new Vector2Int(21, 0));
         }
 
         var inv = CultureInfo.InvariantCulture;
         string filePath = Application.dataPath + "/CBS_Benchmark_Resultados.csv";
 
-        // Ejecución de calentamiento (JIT) que NO se registra
-        cbsManager.FindPaths(maze, starts, goals);
+        // Ejecución de calentamiento (JIT)
+        cbsManager.FindPaths(maze, starts, goal);
 
         using (var writer = new StreamWriter(filePath))
         {
@@ -61,7 +60,7 @@ public class BenchmarkManager : MonoBehaviour
                 long startMemory = System.GC.GetTotalMemory(true);
 
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var resultPaths = cbsManager.FindPaths(maze, starts, goals);
+                var resultPaths = cbsManager.FindPaths(maze, starts, goal);
                 sw.Stop();
 
                 bool ok = resultPaths != null && cbsManager.Success;
