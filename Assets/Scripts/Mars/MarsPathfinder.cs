@@ -11,6 +11,11 @@ public class MarsPathfinder : MonoBehaviour, IGridPathfinder
     [SerializeField] private MazeNavigationGrid grid;
     [SerializeField] private MarsPlanner.Settings settings = new MarsPlanner.Settings();
 
+    [Header("Moving target")]
+    [Tooltip("The goal is only updated when the target has moved at least this far (world units) from the " +
+             "current goal, so a target that moves every frame does not trigger a replan every frame.")]
+    [SerializeField, Min(0f)] private float goalUpdateDistance = 0.5f;
+
     [Header("Gizmos")]
     [SerializeField] private bool drawPathSet = true;
     [SerializeField] private float gizmoHeight = 0.3f;
@@ -23,7 +28,6 @@ public class MarsPathfinder : MonoBehaviour, IGridPathfinder
     public MarsPlanner.ReplanResult LastReplan => planner != null ? planner.LastReplan : null;
     public long SearchNodes { get; private set; }
     public long SearchPeakMemory => 0;
-    private Vector2Int movingGoalCell;
 
     public bool BindGrid(MazeNavigationGrid navigationGrid)
     {
@@ -37,16 +41,22 @@ public class MarsPathfinder : MonoBehaviour, IGridPathfinder
         worldPath = null;
         SearchNodes = 0;
         if (grid == null) return false;
-        Vector2Int targetCell = grid.WorldToCell(targetWorldPosition);
-        if (planner == null || planner.CurrentPath == null || movingGoalCell != targetCell)
+        if (planner == null || planner.CurrentPath == null)
         {
-            movingGoalCell = targetCell;
             bool initialized = Initialize(currentWorldPosition, targetWorldPosition);
             SearchNodes = planner != null ? planner.OfflineTreeNodes : 0;
             if (!initialized) return false;
         }
         MarsPlanner.ReplanResult previous = LastReplan;
-        bool found = TryGetPath(currentWorldPosition, out worldPath);
+        bool found;
+        if (Flat(targetWorldPosition, planner.GoalPosition) >= goalUpdateDistance)
+        {
+            MarsPlanner.ReplanResult result = planner.SetGoal(targetWorldPosition, currentWorldPosition);
+            found = result.Success;
+            worldPath = result.Waypoints;
+        }
+        else
+            found = TryGetPath(currentWorldPosition, out worldPath);
         // Existing MARS counters: offline tree nodes plus online connection/subtree attempts.
         if (LastReplan != null && LastReplan != previous)
             SearchNodes += LastReplan.ConnectionAttempts + LastReplan.SubtreeIterations;
@@ -88,6 +98,12 @@ public class MarsPathfinder : MonoBehaviour, IGridPathfinder
     }
 
     public bool IsPathValidFrom(Vector3 position) => planner != null && planner.IsValidFrom(position);
+
+    private static float Flat(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x, dz = a.z - b.z;
+        return Mathf.Sqrt(dx * dx + dz * dz);
+    }
 
     private void OnDrawGizmos()
     {

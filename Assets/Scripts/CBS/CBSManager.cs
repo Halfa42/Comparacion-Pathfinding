@@ -39,16 +39,16 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
     {
         public List<List<Vector2Int>> Paths = new List<List<Vector2Int>>();
         public List<Constraint> Constraints = new List<Constraint>();
-        public int Cost = 0;          // Suma de costos (SIC)
-        public int ConflictCount = 0; // Para desempatar: menos conflictos primero
+        public int Cost = 0;          
+        public int ConflictCount = 0; 
     }
 
     public struct Constraint
     {
         public int AgentID;
-        public Vector2Int Position; // Celda prohibida (vertex) o celda DESTINO (edge)
-        public Vector2Int From;     // Solo para edge: celda de origen
-        public int Time;            // Instante en el que el agente estaría en Position
+        public Vector2Int Position; 
+        public Vector2Int From;     
+        public int Time;            
         public bool IsEdge;
     }
 
@@ -57,7 +57,6 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         public int Agent1, Agent2;
         public int Time;
         public bool IsEdge;
-        // Movimiento de cada agente que causa el conflicto (From -> Pos, llegando en Time)
         public Vector2Int From1, Pos1, From2, Pos2;
     }
 
@@ -65,35 +64,40 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
     [Header("Límites de seguridad")]
     [SerializeField] private int maxCBSNodes = 100000;
     [SerializeField] private float timeLimitSeconds = 30f;
-    [SerializeField] private int maxTimeLimit = 200; // horizonte máximo del A* de bajo nivel
+    [SerializeField] private int maxTimeLimit = 200; 
 
     public int TotalNodesExpanded { get; private set; }
     public bool Success { get; private set; }
     public string FailureReason { get; private set; }
     public long PeakMemoryBytes { get; private set; }
 
-    // Cache de mapas de distancia reales (BFS desde la meta). Se limpia en cada FindPaths.
     private readonly Dictionary<Vector2Int, int[,]> distanceCache = new Dictionary<Vector2Int, int[,]>();
 
     private static readonly Vector2Int[] Directions =
     {
         new Vector2Int(0, 1), new Vector2Int(0, -1),
         new Vector2Int(-1, 0), new Vector2Int(1, 0),
-        new Vector2Int(0, 0) // esperar
+        new Vector2Int(0, 0) // Esperar (clave para que los agentes hagan fila sin chocar)
     };
 
-    // --- ALGORITMO CBS ---
+    // --- ALGORITMO CBS DIRIGIDO AL PLAYER ---
+    public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, Vector2Int playerGoal)
+    {
+        var goals = Enumerable.Repeat(playerGoal, starts.Count).ToList();
+        return FindPaths(grid, starts, goals);
+    }
+
+    // Preserve the original benchmark API with a separate goal for each agent.
     public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, List<Vector2Int> goals)
     {
         TotalNodesExpanded = 0;
         Success = false;
         FailureReason = "";
         PeakMemoryBytes = 0;
-        distanceCache.Clear();
+        distanceCache.Clear(); // Limpiamos el caché de heurística para el nuevo frame
 
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
-        // Orden: menor costo; empate -> menos conflictos
         var openList = new PriorityQueue<CBSNode>((a, b) =>
         {
             int cmp = a.Cost.CompareTo(b.Cost);
@@ -106,7 +110,7 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
             var path = SpaceTimeAStar(grid, starts[i], goals[i], i, root.Constraints);
             if (path == null)
             {
-                FailureReason = $"Agente {i} no tiene ruta individual";
+                FailureReason = $"Agente {i} no encuentra ruta hacia el objetivo.";
                 return null;
             }
             root.Paths.Add(path);
@@ -140,7 +144,7 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
             {
                 Success = true;
                 PeakMemoryBytes = System.Math.Max(PeakMemoryBytes, System.GC.GetTotalMemory(false));
-                return bestNode.Paths; // Solución sin conflictos
+                return bestNode.Paths; 
             }
 
             for (int i = 0; i < 2; i++)
@@ -176,8 +180,6 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         return null;
     }
 
-    // Devuelve el primer conflicto en el tiempo y cuenta el total.
-    // Modelo: el agente DESAPARECE al llegar a su meta (no bloquea la casilla).
     private Conflict FindFirstConflict(List<List<Vector2Int>> paths, out int total)
     {
         total = 0;
@@ -189,7 +191,11 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         {
             for (int i = 0; i < paths.Count; i++)
             {
-                if (t >= paths[i].Count) continue; // ya salió
+                // LÓGICA DE DESAPARICIÓN: Si el tiempo actual 't' es mayor o igual al tamaño
+                // de la ruta del agente, significa que ya llegó a la meta del player.
+                // Se ignora para futuros conflictos, liberando la casilla.
+                if (t >= paths[i].Count) continue; 
+                
                 for (int j = i + 1; j < paths.Count; j++)
                 {
                     if (t >= paths[j].Count) continue;
@@ -206,7 +212,7 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
                             };
                     }
 
-                    // Conflicto de arista (swap)
+                    // Conflicto de arista
                     if (t + 1 < paths[i].Count && t + 1 < paths[j].Count &&
                         paths[i][t] == paths[j][t + 1] && paths[i][t + 1] == paths[j][t] &&
                         paths[i][t] != paths[i][t + 1])
@@ -226,7 +232,6 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         return first;
     }
 
-    // Para validar la solución en el benchmark
     public bool HasConflicts(List<List<Vector2Int>> paths)
     {
         int total;
@@ -252,16 +257,17 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         long N = (long)W * H;
 
         int[,] dist = GetDistanceMap(grid, goal);
-        if (dist[start.y, start.x] < 0) return null; // meta inalcanzable
+        if (dist[start.y, start.x] < 0) return null; 
 
-        // Restricciones de este agente en HashSets (consulta O(1))
         var vertexC = new HashSet<long>();
         var edgeC = new HashSet<long>();
+        
         for (int k = 0; k < constraints.Count; k++)
         {
             var c = constraints[k];
             if (c.AgentID != agentID) continue;
             long to = (long)c.Position.y * W + c.Position.x;
+            
             if (c.IsEdge)
             {
                 long from = (long)c.From.y * W + c.From.x;
@@ -279,7 +285,6 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
             return cmp != 0 ? cmp : a.H.CompareTo(b.H);
         });
 
-        // En espacio-tiempo G == Time, así que el primer acceso a (x,y,t) ya es óptimo
         var visited = new HashSet<long>();
 
         var startNode = new AStarNode { Position = start, Time = 0, G = 0, H = dist[start.y, start.x] };
@@ -326,7 +331,6 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
         return null;
     }
 
-    // BFS desde la meta: distancia real (con paredes) a cada celda. -1 = inalcanzable.
     private int[,] GetDistanceMap(int[,] grid, Vector2Int goal)
     {
         int[,] map;
@@ -348,7 +352,7 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
             var cur = queue.Dequeue();
             for (int d = 0; d < 4; d++)
             {
-                var n = cur + Directions[d];
+                var n = cur + Directions[d]; // Usamos los desplazamientos ortogonales
                 if (n.x < 0 || n.x >= W || n.y < 0 || n.y >= H) continue;
                 if (grid[n.y, n.x] == 1 || map[n.y, n.x] != -1) continue;
                 map[n.y, n.x] = map[cur.y, cur.x] + 1;
@@ -373,7 +377,7 @@ public class CBSManager : MonoBehaviour, IGridPathfinder
     }
 }
 
-// --- COLA DE PRIORIDAD (MIN-HEAP) ---
+// --- COLA DE PRIORIDAD (MIN-HEAP) INCLUIDA AQUÍ PARA SOLUCIONAR EL ERROR ---
 public class PriorityQueue<T>
 {
     private List<T> data;

@@ -508,11 +508,12 @@ MonoBehaviour:
   - {fileID: 3331260548558761725, guid: d6120d0262f4e5e4588292172f0dfb06, type: 3}
   - {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
   - {fileID: 4795062473110346599, guid: 4fae3fc81a5fb4448b2dc857a3d19c0c, type: 3}
+  - {fileID: 3331260548558761725, guid: 246954b737043234d8b5a4cea587e773, type: 3}
   agentStart: {fileID: 1739712734}
   grid: {fileID: 379980422}
   goal: {fileID: 1956807197}
   targetSeed: 12345
-  runsPerAlgorithm: 10
+  runsPerAlgorithm: 3
   secondsBetweenRuns: 1
   runOnStart: 1
   benchmark: {fileID: 0}

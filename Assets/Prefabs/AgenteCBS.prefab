@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3808681344724147744}
   - component: {fileID: 945018583432281476}
   - component: {fileID: 7355922249761091372}
-  - component: {fileID: 8220954486400832215}
+  - component: {fileID: -7194654675434352051}
   - component: {fileID: -4512235880398409534}
   m_Layer: 0
   m_Name: AgenteCBS
@@ -112,7 +112,7 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8220954486400832215
+--- !u!114 &-7194654675434352051
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

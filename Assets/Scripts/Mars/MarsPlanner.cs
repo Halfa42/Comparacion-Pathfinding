@@ -100,6 +100,9 @@ public class MarsPlanner
         public int SubtreeIterations;
         public bool ImprovedByGraphSearch;
         public int CollisionChecks;
+        public bool GoalChanged;          // moving target: this call moved the goal
+        public int RetargetedPaths;       // stored paths extended to the new goal
+        public int DroppedPaths;          // stored paths that could not reach the new goal
         public string Reason = "";
         public List<Vector3> Waypoints;
     }
@@ -130,6 +133,12 @@ public class MarsPlanner
     public int CollisionChecks { get; private set; }
     public ReplanResult LastReplan { get; private set; }
     public string FailureReason { get; private set; } = "";
+    public Vector3 GoalPosition => goalNode != null ? goalNode.Position : Vector3.zero;
+    /// <summary>Number of goal changes (moving target) since Initialize.</summary>
+    public int GoalChanges { get; private set; }
+
+    // False after a goal change if the current path could not be extended to the new goal yet.
+    private bool currentReachesGoal;
 
     public MarsPlanner(MazeNavigationGrid grid, Settings settings)
     {
@@ -146,6 +155,7 @@ public class MarsPlanner
         nodes.Clear(); paths.Clear(); connections.Clear();
         CurrentPath = null; LastReplan = null; FailureReason = "";
         OfflineTreeNodes = 0; CollisionChecks = 0; initialPathCount = 0;
+        GoalChanges = 0; currentReachesGoal = true;
 
         try
         {
@@ -264,7 +274,8 @@ public class MarsPlanner
     /// <summary>Collision check of the current path from the robot to the goal (the paper's checking thread).</summary>
     public bool IsValidFrom(Vector3 robot)
     {
-        if (CurrentPath == null) return false;
+        if (CurrentPath == null || !currentReachesGoal) return false;
+        robot = PlanningPosition(robot);
         int k = Project(CurrentPath, robot);
         if (!checker.IsConnectionValid(robot, CurrentPath.Nodes[k + 1].Position)) return false;
         for (int i = k + 1; i < CurrentPath.Edges.Count; i++)
@@ -275,14 +286,33 @@ public class MarsPlanner
     /// <summary>Remaining waypoints of the current path: robot position, then the next nodes to the goal.</summary>
     public List<Vector3> RemainingWaypoints(Vector3 robot)
     {
+        if (CurrentPath == null) return new List<Vector3> { robot };
+        robot = PlanningPosition(robot);
         var result = new List<Vector3> { robot };
-        if (CurrentPath == null) return result;
         int k = Project(CurrentPath, robot);
         for (int i = k + 1; i < CurrentPath.Nodes.Count; i++) result.Add(CurrentPath.Nodes[i].Position);
         return result;
     }
 
-    public ReplanResult Replan(Vector3 robot)
+    /// <summary>Replans from the robot's position because the current path is blocked (or to improve it).</summary>
+    public ReplanResult Replan(Vector3 robot) => Run(robot, false, Vector3.zero);
+
+    /// <summary>
+    /// Moving target: moves the goal and replans from the robot's position, within the same time budget.
+    /// Extension of MARS (the paper assumes a fixed goal). The path set and the graph are reused:
+    ///   1. every stored path is re-targeted: it is cut at its cheapest node that sees the new goal and a
+    ///      segment to the new goal is added; if no node sees it, the path is extended from the old goal
+    ///      with informedPlan (old goal -> new goal, computed once and shared by all paths);
+    ///   2. paths that cannot be re-targeted are dropped from the set;
+    ///   3. the normal MARS replanning runs toward the new goal: if the re-targeted current path is valid it
+    ///      is the incumbent and searchBetterPath looks for shortcuts in G; if it is blocked or could not be
+    ///      re-targeted, connectToPaths connects the robot side to the re-targeted paths / the new goal.
+    /// Every call with a different goal moves it; MarsPathfinder.TryGetPath(position, goal, ...) only calls
+    /// this when the target moved at least its Goal Update Distance.
+    /// </summary>
+    public ReplanResult SetGoal(Vector3 newGoal, Vector3 robot) => Run(robot, true, newGoal);
+
+    private ReplanResult Run(Vector3 robot, bool changeGoal, Vector3 newGoal)
     {
         var res = new ReplanResult();
         var clock = Stopwatch.StartNew();
@@ -292,7 +322,19 @@ public class MarsPlanner
         try
         {
             if (CurrentPath == null) { res.Reason = "MARS no inicializado"; return res; }
+            robot = PlanningPosition(robot);
             if (!checker.IsPositionValid(robot)) { res.Reason = "el robot está en una celda bloqueada"; return res; }
+
+            if (changeGoal)
+            {
+                newGoal.y = startNode.Position.y; // stay on the navigation plane (the target may be taller)
+                if (!checker.IsPositionValid(newGoal)) { res.Reason = "la nueva meta está bloqueada"; return res; }
+                if (Flat(newGoal, goalNode.Position) > 0.0001f)
+                {
+                    res.GoalChanged = true;
+                    RetargetPaths(newGoal, robot, clock, deadline, res);
+                }
+            }
 
             // 1) Project the robot on the current path and build robot -> ... -> goal.
             int k = Project(CurrentPath, robot);
@@ -308,6 +350,10 @@ public class MarsPlanner
             int blocked = -1;
             for (int i = 0; i < remEdges.Count; i++)
                 if (!IsValid(remEdges[i])) { blocked = i; break; }
+
+            // The current path ends somewhere that is no longer the goal: every node up to its end can
+            // be used to connect toward the new goal (as if it were blocked after its last node).
+            if (blocked < 0 && !currentReachesGoal) blocked = remEdges.Count;
 
             float best = float.PositiveInfinity;
             List<Edge> bestRoute = null;
@@ -376,7 +422,8 @@ public class MarsPlanner
                             bestRoute = new List<Edge>();
                             for (int i = 0; i < qi; i++) bestRoute.Add(remEdges[i]);            // robot -> x_n
                             bestRoute.AddRange(connection);                                     // x_n -> x_j
-                            for (int i = t.Index; i < t.Path.Edges.Count; i++) bestRoute.Add(t.Path.Edges[i]); // x_j -> goal
+                            if (t.Path != null)                                                  // x_j -> goal
+                                for (int i = t.Index; i < t.Path.Edges.Count; i++) bestRoute.Add(t.Path.Edges[i]);
                         }
                     }
                 }
@@ -385,6 +432,8 @@ public class MarsPlanner
             // 4) Anytime improvement with the time left.
             if (bestRoute != null && s.anytimeImprovement && clock.Elapsed.TotalMilliseconds < deadline)
             {
+                // Candidate shortcut straight to the goal (checked lazily by the search, only if it helps).
+                NewEdge(robotNode, goalNode, true, false);
                 float before = best;
                 SearchBetterPath(robotNode, ref best, ref bestRoute, clock, deadline);
                 res.ImprovedByGraphSearch = best < before - 0.0001f;
@@ -406,6 +455,7 @@ public class MarsPlanner
             }
             AddReplannedPath(newPath);
             CurrentPath = newPath;
+            currentReachesGoal = true;
 
             res.Success = true;
             res.Cost = best;
@@ -424,6 +474,8 @@ public class MarsPlanner
     private List<Target> CollectTargets()
     {
         var best = new Dictionary<Node, Target>();
+        // The goal itself is always a target (needed after a goal change, when few paths reach it yet).
+        Offer(best, new Target { Node = goalNode, CostToGo = 0f, Path = null, Index = 0 });
         foreach (Path p in paths)
         {
             int last = p.Nodes.Count - 1;
@@ -437,6 +489,100 @@ public class MarsPlanner
             }
         }
         return best.Values.ToList();
+    }
+
+    // ---------------------------------------------------------------- moving target
+
+    private void RetargetPaths(Vector3 newGoal, Vector3 robot, Stopwatch clock, double deadline, ReplanResult res)
+    {
+        int k = Project(CurrentPath, robot); // before any path is modified
+        Node oldGoal = goalNode;
+        goalNode = NewNode(newGoal);
+        GoalChanges++;
+
+        var subtrees = new Dictionary<Node, MarsInformedPlanner>();
+        List<Edge> bridge = null;  // old goal -> new goal, shared by every path that needs it
+        bool bridgeTried = false;
+
+        // Current path first: it matters most. Others follow while there is time.
+        var order = new List<Path>(paths);
+        if (order.Remove(CurrentPath)) order.Insert(0, CurrentPath);
+        bool currentInSet = paths.Contains(CurrentPath);
+        if (!currentInSet) order.Insert(0, CurrentPath);
+
+        foreach (Path p in order)
+        {
+            bool isCurrent = p == CurrentPath;
+            bool ok = clock.Elapsed.TotalMilliseconds < deadline || isCurrent;
+            if (ok) ok = Retarget(p, isCurrent ? k + 1 : 0, oldGoal, ref bridge, ref bridgeTried, subtrees, clock, deadline, res);
+
+            if (ok)
+            {
+                res.RetargetedPaths++;
+                continue;
+            }
+
+            res.DroppedPaths++;
+            if (isCurrent) currentReachesGoal = false;
+            int index = paths.IndexOf(p);
+            if (index >= 0)
+            {
+                paths.RemoveAt(index);
+                if (index < initialPathCount) initialPathCount--;
+            }
+        }
+    }
+
+    // Cut the path at its cheapest node (index >= minIndex) that sees the new goal and add that segment;
+    // otherwise append the old goal -> new goal bridge.
+    private bool Retarget(Path p, int minIndex, Node oldGoal, ref List<Edge> bridge, ref bool bridgeTried,
+                          Dictionary<Node, MarsInformedPlanner> subtrees, Stopwatch clock, double deadline,
+                          ReplanResult res)
+    {
+        int last = p.Nodes.Count - 1;
+        if (p.Nodes[last] != oldGoal) return false; // already re-targeted elsewhere: should not happen
+        minIndex = Mathf.Clamp(minIndex, 0, last);
+
+        var costFromStart = new float[p.Nodes.Count];
+        for (int i = 1; i < p.Nodes.Count; i++) costFromStart[i] = costFromStart[i - 1] + p.Edges[i - 1].Cost;
+
+        Vector3 goal = goalNode.Position;
+        List<int> candidates = Enumerable.Range(minIndex, last - minIndex + 1)
+            .OrderBy(j => costFromStart[j] + Flat(p.Nodes[j].Position, goal))
+            .ToList();
+
+        foreach (int i in candidates)
+        {
+            CollisionChecks++;
+            if (!checker.IsConnectionValid(p.Nodes[i].Position, goal)) continue;
+
+            p.Nodes.RemoveRange(i + 1, p.Nodes.Count - (i + 1));
+            p.Edges.RemoveRange(i, p.Edges.Count - i);
+            Edge e = NewEdge(p.Nodes[i], goalNode, true, true);
+            p.Edges.Add(e);
+            p.Nodes.Add(goalNode);
+            p.Cost = costFromStart[i] + e.Cost;
+            return true;
+        }
+
+        // No node of this path sees the new goal: extend it from the old goal.
+        if (!bridgeTried)
+        {
+            bridgeTried = true;
+            res.ConnectionAttempts++;
+            if (!InformedPlan(oldGoal, goalNode, float.PositiveInfinity, subtrees, clock, deadline, res,
+                              out bridge, out float _))
+                bridge = null;
+        }
+        if (bridge == null) return false;
+
+        foreach (Edge e in bridge)
+        {
+            p.Edges.Add(e);
+            p.Nodes.Add(e.To);
+        }
+        p.Cost = costFromStart[last] + bridge.Sum(x => x.Cost);
+        return true;
     }
 
     private static void Offer(Dictionary<Node, Target> best, Target t)
@@ -560,6 +706,34 @@ public class MarsPlanner
     }
 
     // =====================================================================  helpers
+
+    /// <summary>
+    /// The agent follows the path with a small tolerance (GridAgentMovement's stopping distance), so it can
+    /// be a few centimetres off it, inside the safety margin of a wall, where every segment would be
+    /// rejected. In that case plan from the closest point of the current path (clear by construction),
+    /// or, failing that, from the centre of the agent's cell.
+    /// </summary>
+    private Vector3 PlanningPosition(Vector3 robot)
+    {
+        if (checker.IsPositionClear(robot) || CurrentPath == null) return robot;
+
+        int k = Project(CurrentPath, robot);
+        Vector3 onPath = ClosestPoint(robot, CurrentPath.Nodes[k].Position, CurrentPath.Nodes[k + 1].Position);
+        onPath.y = robot.y;
+        if (Flat(onPath, robot) < 0.5f * grid.CellSize && checker.IsPositionClear(onPath)) return onPath;
+
+        Vector3 centre = grid.CellToWorld(grid.WorldToCell(robot));
+        centre.y = robot.y;
+        return checker.IsPositionValid(centre) ? centre : robot;
+    }
+
+    private static Vector3 ClosestPoint(Vector3 p, Vector3 a, Vector3 b)
+    {
+        float abx = b.x - a.x, abz = b.z - a.z;
+        float len2 = abx * abx + abz * abz;
+        float t = len2 > 0f ? Mathf.Clamp01(((p.x - a.x) * abx + (p.z - a.z) * abz) / len2) : 0f;
+        return new Vector3(a.x + abx * t, p.y, a.z + abz * t);
+    }
 
     private bool IsValid(Edge e)
     {

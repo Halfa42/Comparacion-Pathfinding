@@ -12,6 +12,9 @@ public class MarsCollisionChecker
     public bool IsPositionValid(Vector3 position) =>
         grid.IsSegmentWalkable(position, position);
 
+    // Compatibility with the moving-goal planner; both checks use the shared grid geometry.
+    public bool IsPositionClear(Vector3 position) => IsPositionValid(position);
+
     public bool IsConnectionValid(Vector3 from, Vector3 to) =>
         grid.IsSegmentWalkable(from, to);
 

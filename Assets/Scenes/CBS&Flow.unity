@@ -471,7 +471,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   flowFieldManager: {fileID: 774054569}
   numberOfRuns: 10
-  numberOfAgents: 10
+  numberOfAgents: 2
 --- !u!114 &774054569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -598,6 +598,86 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1693150267
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1693150271}
+  - component: {fileID: 1693150270}
+  - component: {fileID: 1693150269}
+  - component: {fileID: 1693150268}
+  m_Layer: 0
+  m_Name: SimulationSystem (FlowField)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1693150268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693150267}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5683340997287c458e2623bd95542ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flowFieldManager: {fileID: 1693150269}
+  mazeGenerator: {fileID: 379980420}
+  playerTransform: {fileID: 0}
+  agentPrefab: {fileID: 3331260548558761725, guid: 246954b737043234d8b5a4cea587e773, type: 3}
+  numberOfAgents: 1
+  recalculateInterval: 0.5
+--- !u!114 &1693150269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693150267}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79e6330223b7b0843aca4497a31f34ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxSimulationSteps: 200
+  priorityRule: 0
+--- !u!114 &1693150270
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693150267}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b48d24428433154cab04e2c9d3222d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mazeGenerator: {fileID: 379980420}
+  playerPrefab: {fileID: 3301294054939785204, guid: 46eacb269d452cc4ca7e6f3df8c6707f, type: 3}
+--- !u!4 &1693150271
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693150267}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 13.449103, y: 0.7281632, z: 8.334104}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1849040401
 GameObject:
   m_ObjectHideFlags: 0
@@ -609,6 +689,7 @@ GameObject:
   - component: {fileID: 1849040404}
   - component: {fileID: 1849040403}
   - component: {fileID: 1849040402}
+  - component: {fileID: 1849040405}
   m_Layer: 0
   m_Name: SimulationSystem (CBS)
   m_TagString: Untagged
@@ -630,8 +711,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cbsManager: {fileID: 1849040403}
   mazeGenerator: {fileID: 379980420}
+  playerTransform: {fileID: 0}
   agentPrefab: {fileID: 3331260548558761725, guid: d6120d0262f4e5e4588292172f0dfb06, type: 3}
-  numberOfAgents: 10
+  numberOfAgents: 1
+  recalculateInterval: 1
 --- !u!114 &1849040403
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -656,12 +739,26 @@ Transform:
   m_GameObject: {fileID: 1849040401}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18.904272, y: -0.94128615, z: 7.0408053}
+  m_LocalPosition: {x: 28.3, y: -0.94128615, z: 7.0408053}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1849040405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1849040401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b48d24428433154cab04e2c9d3222d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mazeGenerator: {fileID: 379980420}
+  playerPrefab: {fileID: 3301294054939785204, guid: 46eacb269d452cc4ca7e6f3df8c6707f, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -673,3 +770,4 @@ SceneRoots:
   - {fileID: 774054567}
   - {fileID: 1358463087}
   - {fileID: 1849040404}
+  - {fileID: 1693150271}

@@ -15,8 +15,38 @@ using UnityEngine;
 ///       3) Se simula paso a paso: cada agente sigue el flujo y, si dos quieren la misma celda,
 ///          gana el de mayor prioridad y el otro espera. No hay replanificación.
 /// </summary>
-public class FlowFieldManager : MonoBehaviour
+public class FlowFieldManager : MonoBehaviour, IGridPathfinder
 {
+    private MazeNavigationGrid navigationGrid;
+    public long SearchNodes => TotalNodesExpanded;
+    public long SearchPeakMemory => PeakMemoryBytes;
+
+    public bool BindGrid(MazeNavigationGrid grid)
+    {
+        navigationGrid = grid;
+        return grid != null;
+    }
+
+    // The shared follower handles movement, capture and benchmark collection.
+    public bool TryGetPath(Vector3 start, Vector3 goal, out List<Vector3> path)
+    {
+        path = null;
+        TotalNodesExpanded = 0;
+        PeakMemoryBytes = 0;
+        Success = false;
+        if (navigationGrid == null) return false;
+        Vector2Int startCell = navigationGrid.WorldToCell(start), goalCell = navigationGrid.WorldToCell(goal);
+        if (!navigationGrid.IsWalkable(startCell) || !navigationGrid.IsWalkable(goalCell)) return false;
+        var cells = new int[navigationGrid.Depth, navigationGrid.Width];
+        for (int z = 0; z < navigationGrid.Depth; z++)
+        for (int x = 0; x < navigationGrid.Width; x++)
+            cells[z, x] = navigationGrid.IsWalkable(new Vector2Int(x, z)) ? 0 : 1;
+        var routes = FindPaths(cells, new List<Vector2Int> { startCell }, goalCell);
+        if (!Success || routes == null || routes.Count == 0) return false;
+        path = routes[0].ConvertAll(cell => navigationGrid.CellToWorld(cell));
+        return true;
+    }
+
     public enum PriorityRule
     {
         ClosestToGoal, // gana el agente con menor costo restante (desempata por ID)
@@ -51,6 +81,19 @@ public class FlowFieldManager : MonoBehaviour
         new Vector2Int(0, 1), new Vector2Int(0, -1),
         new Vector2Int(-1, 0), new Vector2Int(1, 0)
     };
+
+    // --- SOBRECARGA PARA PERSEGUIR A UN OBJETIVO ÚNICO (PLAYER) ---
+    public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, Vector2Int playerGoal)
+    {
+        // Creamos una lista donde todos los agentes tienen exactamente la misma meta
+        List<Vector2Int> goals = new List<Vector2Int>();
+        for (int i = 0; i < starts.Count; i++)
+        {
+            goals.Add(playerGoal);
+        }
+        // Llamamos al método original, el cual ya está optimizado para no recalcular metas repetidas
+        return FindPaths(grid, starts, goals);
+    }
 
     public List<List<Vector2Int>> FindPaths(int[,] grid, List<Vector2Int> starts, List<Vector2Int> goals)
     {

@@ -22,6 +22,7 @@ public class MazeNavigationGrid : MonoBehaviour
 
     private void Awake()
     {
+        if (maze == null) maze = FindFirstObjectByType<MazeGridGenerator>();
         if(maze == null)
             Debug.LogError("MazeNavigationGrid needs a MazeGridGenerator.");
     }
