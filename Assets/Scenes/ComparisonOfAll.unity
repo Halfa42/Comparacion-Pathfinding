@@ -503,12 +503,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   agentPrefabs:
+  - {fileID: 3331260548558761725, guid: 246954b737043234d8b5a4cea587e773, type: 3}
   - {fileID: 6073495846908015729, guid: 77cbf81a7a2caa74ca16beae8592f6d8, type: 3}
   - {fileID: 2575506932585703352, guid: b781c7d54b278ea499a2cdf0080a3963, type: 3}
   - {fileID: 3331260548558761725, guid: d6120d0262f4e5e4588292172f0dfb06, type: 3}
   - {fileID: 1917503243696377571, guid: a1fd589b2037dd24e9d3aa59903bb24a, type: 3}
   - {fileID: 4795062473110346599, guid: 4fae3fc81a5fb4448b2dc857a3d19c0c, type: 3}
-  - {fileID: 3331260548558761725, guid: 246954b737043234d8b5a4cea587e773, type: 3}
   agentStart: {fileID: 1739712734}
   grid: {fileID: 379980422}
   goal: {fileID: 1956807197}
